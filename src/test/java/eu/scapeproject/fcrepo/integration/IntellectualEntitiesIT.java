@@ -11,6 +11,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -61,7 +62,13 @@ public class IntellectualEntitiesIT {
         HttpResponse resp = this.client.execute(post);
         assertEquals(201, resp.getStatusLine().getStatusCode());
         String id = EntityUtils.toString(resp.getEntity());
+        System.out.println(id);
         assertTrue(id.length() > 0);
         post.releaseConnection();
+
+        HttpGet get = new HttpGet(FEDORA_URL + "/objects/scape/entities/" + id);
+        resp = this.client.execute(get);
+        System.out.println(EntityUtils.toString(resp.getEntity()));
+        get.releaseConnection();
     }
 }
