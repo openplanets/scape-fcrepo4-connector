@@ -24,8 +24,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import eu.scapeproject.model.File;
 import eu.scapeproject.model.IntellectualEntity;
 import eu.scapeproject.model.LifecycleState;
+import eu.scapeproject.model.Representation;
 import eu.scapeproject.model.TestUtil;
 import eu.scapeproject.util.ScapeMarshaller;
 
@@ -55,7 +57,7 @@ public class IntellectualEntitiesIT {
 
     @Test
     public void testIngestIntellectualEntityAndCheckinFedora() throws Exception {
-        IntellectualEntity ie = TestUtil.createTestEntity();
+        IntellectualEntity ie = TestUtil.createTestEntity("entity-1");
         HttpPost post = new HttpPost(SCAPE_URL + "/entity");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(ie, sink);
@@ -77,7 +79,7 @@ public class IntellectualEntitiesIT {
 
     @Test
     public void testIngestAndRetrieveIntellectualEntity() throws Exception {
-        IntellectualEntity ie = TestUtil.createTestEntityWithMultipleRepresentations();
+        IntellectualEntity ie = TestUtil.createTestEntityWithMultipleRepresentations("entity-2");
         HttpPost post = new HttpPost(SCAPE_URL + "/entity");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(ie, sink);
@@ -100,6 +102,34 @@ public class IntellectualEntitiesIT {
         assertEquals(ie.getIdentifier(),fetched.getIdentifier());
         assertEquals(LifecycleState.State.INGESTED, fetched.getLifecycleState().getState());
         assertEquals(ie.getRepresentations().size(), fetched.getRepresentations().size());
+        get.releaseConnection();
+    }
+
+    @Test
+    public void testIngestAndRetrieveFile() throws Exception {
+        IntellectualEntity ie = TestUtil.createTestEntityWithMultipleRepresentations("entity-3");
+        HttpPost post = new HttpPost(SCAPE_URL + "/entity");
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(ie, sink);
+        post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size()));
+        long start = System.currentTimeMillis();
+        HttpResponse resp = this.client.execute(post);
+        LOG.info("INGEST DURATION: " + (System.currentTimeMillis() - start) + " ms");
+        assertEquals(201, resp.getStatusLine().getStatusCode());
+        String id = EntityUtils.toString(resp.getEntity());
+        System.out.println(id);
+        assertTrue(id.length() > 0);
+        post.releaseConnection();
+
+        Representation rep = ie.getRepresentations().get(0);
+        File f = ie.getRepresentations().get(0).getFiles().get(0);
+        HttpGet get = new HttpGet(SCAPE_URL + "/file/" + id + "/" + rep.getIdentifier().getValue() + "/" + f.getIdentifier().getValue());
+        start = System.currentTimeMillis();
+        resp = this.client.execute(get);
+        LOG.info("RETRIEVE DURATION: " + (System.currentTimeMillis() - start) + " ms");
+        assertEquals(200,resp.getStatusLine().getStatusCode());
+        File fetched = this.marshaller.deserialize(File.class, resp.getEntity().getContent());
+        assertEquals(f.getIdentifier().getValue(), fetched.getIdentifier().getValue());
         get.releaseConnection();
     }
 }
