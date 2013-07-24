@@ -6,6 +6,7 @@ package eu.scapeproject.fcrepo.integration;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import info.lc.xmlns.textmd_v3.TextMD;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -19,6 +20,7 @@ import org.apache.http.util.EntityUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.purl.dc.elements._1.ElementContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.test.context.ContextConfiguration;
@@ -255,9 +257,44 @@ public class IntellectualEntitiesIT {
     }
 
     @Test
-    public void testIngestAsyncAndRetrieveLifeCycle() throws Exception {
+    public void testIngestAndRetrieveMetadata() throws Exception {
         IntellectualEntity ie =
                 TestUtil.createTestEntityWithMultipleRepresentations("entity-7");
+        HttpPost post = new HttpPost(SCAPE_URL + "/entity");
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(ie, sink);
+        post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size()));
+        HttpResponse resp = this.client.execute(post);
+        assertEquals(201, resp.getStatusLine().getStatusCode());
+        String id = EntityUtils.toString(resp.getEntity());
+        assertTrue(id.length() > 0);
+
+        /* check the desc metadata of the entity*/
+        HttpGet get = new HttpGet(SCAPE_URL + "/metadata/" + id + "/DESCRIPTIVE");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+
+        Object md = this.marshaller.deserialize(resp.getEntity()
+                        .getContent());
+        assertEquals(md.getClass(), ElementContainer.class);
+        get.releaseConnection();
+
+        /* check the tech metadata of the rep */
+        get = new HttpGet(SCAPE_URL + "/metadata/" + id + "/" + ie.getRepresentations().get(0).getIdentifier().getValue() + "/TECHNICAL");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+
+        md = this.marshaller.deserialize(resp.getEntity()
+                        .getContent());
+        assertEquals(md.getClass(), TextMD.class);
+        get.releaseConnection();
+    }
+
+    @Test
+    public void testIngestAsyncAndRetrieveLifeCycle() throws Exception {
+        IntellectualEntity ie =
+                TestUtil.createTestEntityWithMultipleRepresentations("entity-8");
         HttpPost post = new HttpPost(SCAPE_URL + "/entity-async");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(ie, sink);
