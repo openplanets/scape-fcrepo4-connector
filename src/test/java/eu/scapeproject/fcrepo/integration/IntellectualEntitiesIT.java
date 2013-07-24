@@ -27,6 +27,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import eu.scapeproject.model.File;
 import eu.scapeproject.model.IntellectualEntity;
 import eu.scapeproject.model.LifecycleState;
+import eu.scapeproject.model.LifecycleState.State;
 import eu.scapeproject.model.Representation;
 import eu.scapeproject.model.TestUtil;
 import eu.scapeproject.util.ScapeMarshaller;
@@ -131,5 +132,51 @@ public class IntellectualEntitiesIT {
         File fetched = this.marshaller.deserialize(File.class, resp.getEntity().getContent());
         assertEquals(f.getIdentifier().getValue(), fetched.getIdentifier().getValue());
         get.releaseConnection();
+    }
+
+    @Test
+    public void testIngestAndRetrieveLifeCycle() throws Exception {
+        IntellectualEntity ie = TestUtil.createTestEntityWithMultipleRepresentations("entity-4");
+        HttpPost post = new HttpPost(SCAPE_URL + "/entity");
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(ie, sink);
+        post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size()));
+        HttpResponse resp = this.client.execute(post);
+        assertEquals(201, resp.getStatusLine().getStatusCode());
+        String id = EntityUtils.toString(resp.getEntity());
+        assertTrue(id.length() > 0);
+
+        /* check the lifecycle state */
+        HttpGet get = new HttpGet(SCAPE_URL + "/lifecycle/" + id);
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        LifecycleState state = (LifecycleState) this.marshaller.deserialize(resp.getEntity().getContent());
+        assertEquals(LifecycleState.State.INGESTED, state.getState());
+        get.releaseConnection();
+    }
+
+    @Test
+    public void testIngestAsyncAndRetrieveLifeCycle() throws Exception {
+        IntellectualEntity ie = TestUtil.createTestEntityWithMultipleRepresentations("entity-5");
+        HttpPost post = new HttpPost(SCAPE_URL + "/entity-async");
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(ie, sink);
+        post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size()));
+        HttpResponse resp = this.client.execute(post);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        String id = EntityUtils.toString(resp.getEntity());
+        assertTrue(id.length() > 0);
+
+        /* check the lifecycle state and wait for the entity to be ingested*/
+        LifecycleState state;
+        long start = System.currentTimeMillis();
+        do {
+            HttpGet get = new HttpGet(SCAPE_URL + "/lifecycle/" + id);
+            resp = this.client.execute(get);
+            assertEquals(200, resp.getStatusLine().getStatusCode());
+            state = (LifecycleState) this.marshaller.deserialize(resp.getEntity().getContent());
+            get.releaseConnection();
+        }while(!state.getState().equals(State.INGESTED) && (System.currentTimeMillis() - start) < 15000);
+        assertEquals(State.INGESTED, state.getState());
     }
 }
