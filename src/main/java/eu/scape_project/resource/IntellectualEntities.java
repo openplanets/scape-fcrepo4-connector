@@ -85,5 +85,4 @@ public class IntellectualEntities {
         }).build();
 
     }
-
 }

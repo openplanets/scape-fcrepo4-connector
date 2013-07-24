@@ -55,6 +55,7 @@ import eu.scapeproject.model.BitStream;
 import eu.scapeproject.model.File;
 import eu.scapeproject.model.Identifier;
 import eu.scapeproject.model.IntellectualEntity;
+import eu.scapeproject.model.IntellectualEntityCollection;
 import eu.scapeproject.model.LifecycleState;
 import eu.scapeproject.model.LifecycleState.State;
 import eu.scapeproject.model.Representation;
@@ -190,7 +191,7 @@ public class ConnectorService {
     public Object fetchMetadata(final Session session, final String path)
             throws RepositoryException {
         try {
-            if (!this.datastreamService.exists(session, path)){
+            if (!this.datastreamService.exists(session, path)) {
                 return null;
             }
             final Datastream mdDs =
@@ -236,8 +237,9 @@ public class ConnectorService {
         return rep.build();
     }
 
-    public String addEntity(final Session session, final InputStream src) throws RepositoryException{
-        return addEntity(session, src,null);
+    public String addEntity(final Session session, final InputStream src)
+            throws RepositoryException {
+        return addEntity(session, src, null);
     }
 
     public String addEntity(final Session session, final InputStream src,
@@ -249,10 +251,10 @@ public class ConnectorService {
                     this.marshaller.deserialize(IntellectualEntity.class, src);
             final StringBuilder sparql = new StringBuilder();
 
-            if (entityId == null ){
+            if (entityId == null) {
                 if (ie.getIdentifier() != null) {
                     entityId = ie.getIdentifier().getValue();
-                }else {
+                } else {
                     entityId = UUID.randomUUID().toString();
                 }
 
@@ -655,6 +657,17 @@ public class ConnectorService {
                         .createResource("info:fedora" + queueObject.getPath());
         return this.getLiteralStrings(queueModel, parent,
                 "http://scapeproject.eu/model#hasItem");
+    }
+
+    public IntellectualEntityCollection fetchEntites(final Session session,
+            final List<String> paths) throws RepositoryException {
+        List<IntellectualEntity> entities = new ArrayList<>();
+        for (String path : paths) {
+            System.out.println(path);
+            path = path.substring(path.indexOf("/scape/entity") + 14);
+            entities.add(this.fetchEntity(session, path));
+        }
+        return new IntellectualEntityCollection(entities);
     }
 
 }
