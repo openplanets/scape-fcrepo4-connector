@@ -30,10 +30,10 @@ import eu.scape_project.service.ConnectorService;
  */
 @Component
 @Provider
-public class ScapeNamespaceInitializer implements AbstractResourceModelListener {
+public class ScapeInitializer implements AbstractResourceModelListener {
 
     private static final Logger LOG = LoggerFactory
-            .getLogger(ScapeNamespaceInitializer.class);
+            .getLogger(ScapeInitializer.class);
 
     @Autowired
     private NodeService nodeService;
@@ -63,7 +63,7 @@ public class ScapeNamespaceInitializer implements AbstractResourceModelListener 
             this.objectService.createObject(session, ConnectorService.QUEUE_NODE);
             session.save();
         } catch (RepositoryException e) {
-            LOG.error("Error while setting up scape namespace", e);
+            LOG.error("Error while setting up scape connector api", e);
             throw new RuntimeException("Unable to setup scape on fedora");
         }
 
