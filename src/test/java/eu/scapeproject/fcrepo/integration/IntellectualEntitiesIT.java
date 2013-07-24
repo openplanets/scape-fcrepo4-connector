@@ -116,9 +116,45 @@ public class IntellectualEntitiesIT {
     }
 
     @Test
-    public void testIngestAndRetrieveFile() throws Exception {
+    public void testIngestAndRetrieveRepresentation() throws Exception {
         IntellectualEntity ie =
                 TestUtil.createTestEntityWithMultipleRepresentations("entity-3");
+        HttpPost post = new HttpPost(SCAPE_URL + "/entity");
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(ie, sink);
+        post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size()));
+        long start = System.currentTimeMillis();
+        HttpResponse resp = this.client.execute(post);
+        LOG.info("INGEST DURATION: " + (System.currentTimeMillis() - start) +
+                " ms");
+        assertEquals(201, resp.getStatusLine().getStatusCode());
+        String id = EntityUtils.toString(resp.getEntity());
+        System.out.println(id);
+        assertTrue(id.length() > 0);
+        post.releaseConnection();
+
+        Representation rep = ie.getRepresentations().get(0);
+        HttpGet get =
+                new HttpGet(SCAPE_URL + "/representation/" + id + "/" +
+                        rep.getIdentifier().getValue());
+        start = System.currentTimeMillis();
+        resp = this.client.execute(get);
+        LOG.info("RETRIEVE DURATION: " + (System.currentTimeMillis() - start) +
+                " ms");
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        Representation fetched =
+                this.marshaller.deserialize(Representation.class, resp.getEntity()
+                        .getContent());
+        assertEquals(rep.getIdentifier().getValue(), fetched.getIdentifier()
+                .getValue());
+        get.releaseConnection();
+    }
+
+    @Test
+    public void testIngestAndRetrieveFile() throws Exception {
+        IntellectualEntity ie =
+                TestUtil.createTestEntityWithMultipleRepresentations("entity-4");
         HttpPost post = new HttpPost(SCAPE_URL + "/entity");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(ie, sink);
@@ -156,7 +192,7 @@ public class IntellectualEntitiesIT {
     @Test
     public void testIngestAndRetrieveBitstream() throws Exception {
         IntellectualEntity ie =
-                TestUtil.createTestEntityWithMultipleRepresentations("entity-4");
+                TestUtil.createTestEntityWithMultipleRepresentations("entity-5");
         HttpPost post = new HttpPost(SCAPE_URL + "/entity");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(ie, sink);
@@ -196,7 +232,7 @@ public class IntellectualEntitiesIT {
     @Test
     public void testIngestAndRetrieveLifeCycle() throws Exception {
         IntellectualEntity ie =
-                TestUtil.createTestEntityWithMultipleRepresentations("entity-5");
+                TestUtil.createTestEntityWithMultipleRepresentations("entity-6");
         HttpPost post = new HttpPost(SCAPE_URL + "/entity");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(ie, sink);
@@ -221,7 +257,7 @@ public class IntellectualEntitiesIT {
     @Test
     public void testIngestAsyncAndRetrieveLifeCycle() throws Exception {
         IntellectualEntity ie =
-                TestUtil.createTestEntityWithMultipleRepresentations("entity-6");
+                TestUtil.createTestEntityWithMultipleRepresentations("entity-7");
         HttpPost post = new HttpPost(SCAPE_URL + "/entity-async");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(ie, sink);
