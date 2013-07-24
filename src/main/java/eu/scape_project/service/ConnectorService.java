@@ -190,6 +190,9 @@ public class ConnectorService {
     public Object fetchMetadata(final Session session, final String path)
             throws RepositoryException {
         try {
+            if (!this.datastreamService.exists(session, path)){
+                return null;
+            }
             final Datastream mdDs =
                     this.datastreamService.getDatastream(session, path);
             return this.marshaller.deserialize(mdDs.getContent());
