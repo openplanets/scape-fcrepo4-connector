@@ -262,6 +262,26 @@ public class IntellectualEntitiesIT {
         assertEquals(State.INGESTED, state.getState());
     }
 
+    @Test
+    public void testIngestAndSearchEntity() throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-11");
+        this.postEntity(ie1);
+
+        IntellectualEntity ie2 = TestUtil.createTestEntity("entity-12");
+        this.postEntity(ie2);
+
+        /* search via SRU */
+        HttpGet get = new HttpGet(SCAPE_URL + "/sru/entities?version=1&operation=searchRetrieve&query=*");
+        HttpResponse resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        String xml = EntityUtils.toString(resp.getEntity(),"UTF-8");
+        System.out.println(xml);
+        assertTrue(0 < xml.length());
+        assertTrue(xml.indexOf("ID=\"entity-12\" OBJID=\"entity-12\"") > 0);
+        assertTrue(xml.indexOf("ID=\"entity-11\" OBJID=\"entity-11\"") > 0);
+        get.releaseConnection();
+
+    }
     private void postEntity(IntellectualEntity ie) throws IOException {
         HttpPost post = new HttpPost(SCAPE_URL + "/entity");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();

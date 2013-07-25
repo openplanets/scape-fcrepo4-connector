@@ -23,8 +23,15 @@ import java.util.UUID;
 import javax.jcr.ItemExistsException;
 import javax.jcr.ItemNotFoundException;
 import javax.jcr.Node;
+import javax.jcr.NodeIterator;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
+import javax.jcr.query.Query;
+import javax.jcr.query.QueryManager;
+import javax.jcr.query.QueryResult;
+import javax.jcr.query.qom.Constraint;
+import javax.jcr.query.qom.QueryObjectModelFactory;
+import javax.jcr.query.qom.Source;
 import javax.xml.bind.JAXBException;
 
 import org.apache.commons.io.IOUtils;
@@ -270,6 +277,8 @@ public class ConnectorService {
 
             final FedoraObject entityObject =
                     objectService.createObject(session, entityPath);
+            System.out.println(entityObject.getNode().getPrimaryNodeType().getName());
+            entityObject.getNode().addMixin("scape:intellectual-entity");
 
             /* add the metadata datastream for descriptive metadata */
             sparql.append(addMetadata(session, ie.getDescriptive(), entityPath +
@@ -668,6 +677,45 @@ public class ConnectorService {
             entities.add(this.fetchEntity(session, path));
         }
         return new IntellectualEntityCollection(entities);
+    }
+
+    public List<String> searchEntities(Session session, String terms, int offset,
+            int limit) throws RepositoryException {
+
+        final QueryManager queryManager = session.getWorkspace().getQueryManager();
+
+        final QueryObjectModelFactory factory =
+        queryManager.getQOMFactory();
+
+        final Source selector =
+        factory.selector("scape:intellectual-entity", "resourcesSelector");
+        final Constraint constraints =
+        factory.fullTextSearch("resourcesSelector", null, factory
+                .literal(session.getValueFactory().createValue(
+                        terms)));
+
+        final Query query =
+        factory.createQuery(selector, constraints, null, null);
+
+
+        query.setLimit(limit);
+        query.setOffset(offset);
+        final QueryResult result = query.execute();
+        final NodeIterator it = result.getNodes();
+        final List<String> uris = new ArrayList<>();
+        while (it.hasNext()){
+            Node n = it.nextNode();
+            uris.add(n.getPath());
+        }
+        return uris;
+  }
+
+    public void searchRepresentations(Session session, String query,
+            int offset, int limit) {
+    }
+
+    public void
+            searchFiles(Session session, String query, int offset, int limit) {
     }
 
 }

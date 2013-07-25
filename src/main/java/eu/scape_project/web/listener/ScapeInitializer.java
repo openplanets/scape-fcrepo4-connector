@@ -6,6 +6,8 @@ package eu.scape_project.web.listener;
 
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
+import javax.jcr.nodetype.NodeTypeManager;
+import javax.jcr.nodetype.NodeTypeTemplate;
 import javax.ws.rs.ext.Provider;
 
 import org.fcrepo.RdfLexicon;
@@ -62,6 +64,21 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             /* make sure that the queue object exists for async ingests */
             this.objectService.createObject(session, ConnectorService.QUEUE_NODE);
             session.save();
+
+            /* add the scape node mixin types */
+
+         // Get the node type manager ...
+         final NodeTypeManager mgr = session.getWorkspace().getNodeTypeManager();
+
+         // Create a template for the node type ...
+         final NodeTypeTemplate type = mgr.createNodeTypeTemplate();
+         type.setName("scape:intellectual-entity");
+         type.setDeclaredSuperTypeNames(new String[]{"fedora:resource","nt:folder", "fedora:object"});
+         type.setMixin(true);
+         type.setQueryable(true);
+         type.setAbstract(false);
+         // and register it
+         mgr.registerNodeType(type, true);
         } catch (RepositoryException e) {
             LOG.error("Error while setting up scape connector api", e);
             throw new RuntimeException("Unable to setup scape on fedora");
