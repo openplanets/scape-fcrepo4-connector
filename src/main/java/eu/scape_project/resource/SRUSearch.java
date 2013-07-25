@@ -25,7 +25,9 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import eu.scape_project.service.ConnectorService;
+import eu.scapeproject.model.File;
 import eu.scapeproject.model.IntellectualEntity;
+import eu.scapeproject.model.Representation;
 import eu.scapeproject.util.ScapeMarshaller;
 
 @Component
@@ -66,7 +68,12 @@ public class SRUSearch {
                     WebApplicationException {
                 writeSRUHeader(output, uris.size());
                 for (String uri : uris) {
-                    writeSRURecord(output, uri.substring(uri.lastIndexOf('/') + 1));
+                    try{
+                        final IntellectualEntity ie = SRUSearch.this.connectorService.fetchEntity(session, uri.substring(uri.lastIndexOf('/') + 1));
+                        writeSRURecord(ie, output);
+                    }catch(RepositoryException e){
+                        throw new IOException(e);
+                    }
                 }
                 writeSRUFooter(output);
             }
@@ -83,9 +90,26 @@ public class SRUSearch {
     @DefaultValue("25")
     final int limit) throws RepositoryException {
 
-        connectorService.searchRepresentations(this.session, query, offset,
-                limit);
-        return Response.ok().build();
+        final List<String> uris =
+                this.connectorService.searchRepresentations(this.session,
+                        query, offset, limit);
+        return Response.ok(new StreamingOutput() {
+
+            @Override
+            public void write(OutputStream output) throws IOException,
+                    WebApplicationException {
+                writeSRUHeader(output, uris.size());
+                for (String uri : uris) {
+                    try{
+                        final Representation rep = SRUSearch.this.connectorService.fetchRepresentation(session, uri.substring(uri.indexOf("/" + ConnectorService.ENTITY_FOLDER)));
+                        writeSRURecord(rep, output);
+                    }catch(RepositoryException e){
+                        throw new IOException(e);
+                    }
+                }
+                writeSRUFooter(output);
+            }
+        }).build();
     }
 
     @GET
@@ -98,21 +122,37 @@ public class SRUSearch {
     @DefaultValue("25")
     final int limit) throws RepositoryException {
 
-        connectorService.searchFiles(this.session, query, offset, limit);
-        return Response.ok().build();
+        final List<String> uris =
+                this.connectorService.searchFiles(this.session, query, offset,
+                        limit);
+        return Response.ok(new StreamingOutput() {
+
+            @Override
+            public void write(OutputStream output) throws IOException,
+                    WebApplicationException {
+                writeSRUHeader(output, uris.size());
+                for (String uri : uris) {
+                    try{
+                        final File f = SRUSearch.this.connectorService.fetchFile(session, uri.substring(uri.indexOf("/" + ConnectorService.ENTITY_FOLDER)));
+                        writeSRURecord(f, output);
+                    }catch(RepositoryException e){
+                        throw new IOException(e);
+                    }
+                }
+                writeSRUFooter(output);
+            }
+        }).build();
     }
 
-    private void writeSRURecord(OutputStream output, String uri)
+    private void writeSRURecord(Object o, OutputStream output)
             throws IOException {
-        try {
             final StringBuilder sru = new StringBuilder();
             sru.append("<srw:record>");
             sru.append("<srw:recordSchema>http://scapeproject.eu/schema/plato</srw:recordSchema>");
             sru.append("<srw:recordData>");
             output.write(sru.toString().getBytes());
-            final IntellectualEntity ie = this.connectorService.fetchEntity(session, uri);
             try {
-                this.marshaller.serialize(ie, output);
+                this.marshaller.serialize(o, output);
             } catch (JAXBException e) {
                 throw new IOException(e);
             }
@@ -120,9 +160,6 @@ public class SRUSearch {
             sru.append("</srw:recordData>");
             sru.append("</srw:record>");
             output.write(sru.toString().getBytes());
-        } catch (RepositoryException e) {
-            throw new IOException(e);
-        }
     }
 
     private void writeSRUFooter(OutputStream output) throws IOException {

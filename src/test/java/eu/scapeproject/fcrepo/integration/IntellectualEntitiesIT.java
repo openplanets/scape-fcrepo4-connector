@@ -282,6 +282,47 @@ public class IntellectualEntitiesIT {
         get.releaseConnection();
 
     }
+
+    @Test
+    public void testIngestAndSearchRepresentation() throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-13");
+        this.postEntity(ie1);
+
+        IntellectualEntity ie2 = TestUtil.createTestEntity("entity-14");
+        this.postEntity(ie2);
+
+        /* search via SRU */
+        HttpGet get = new HttpGet(SCAPE_URL + "/sru/representations?version=1&operation=searchRetrieve&query=*");
+        HttpResponse resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        String xml = EntityUtils.toString(resp.getEntity(),"UTF-8");
+        System.out.println(xml);
+        assertTrue(0 < xml.length());
+        assertTrue(xml.indexOf("<scape:identifier type=\"String\"><scape:value>representation-1</scape:value></scape:identifier>") > 0);
+        get.releaseConnection();
+
+    }
+
+    @Test
+    public void testIngestAndSearchFile() throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-15");
+        this.postEntity(ie1);
+
+        IntellectualEntity ie2 = TestUtil.createTestEntity("entity-16");
+        this.postEntity(ie2);
+
+        /* search via SRU */
+        HttpGet get = new HttpGet(SCAPE_URL + "/sru/files?version=1&operation=searchRetrieve&query=*");
+        HttpResponse resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        String xml = EntityUtils.toString(resp.getEntity(),"UTF-8");
+        System.out.println(xml);
+        assertTrue(0 < xml.length());
+        assertTrue(xml.indexOf("<scape:identifier type=\"String\"><scape:value>file-1</scape:value></scape:identifier>") > 0);
+        get.releaseConnection();
+
+    }
+
     private void postEntity(IntellectualEntity ie) throws IOException {
         HttpPost post = new HttpPost(SCAPE_URL + "/entity");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();

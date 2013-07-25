@@ -277,7 +277,8 @@ public class ConnectorService {
 
             final FedoraObject entityObject =
                     objectService.createObject(session, entityPath);
-            System.out.println(entityObject.getNode().getPrimaryNodeType().getName());
+            System.out.println(entityObject.getNode().getPrimaryNodeType()
+                    .getName());
             entityObject.getNode().addMixin("scape:intellectual-entity");
 
             /* add the metadata datastream for descriptive metadata */
@@ -361,6 +362,7 @@ public class ConnectorService {
                 /* create a datastream in fedora for this file */
                 final FedoraObject fileObject =
                         this.objectService.createObject(session, filePath);
+                fileObject.getNode().addMixin("scape:file");
 
                 /* add the binary data referenced in the file as a datastream */
                 final Node fileDs =
@@ -496,6 +498,7 @@ public class ConnectorService {
             final String repPath = entityPath + "/" + repId;
             final FedoraObject repObject =
                     objectService.createObject(session, repPath);
+            repObject.getNode().addMixin("scape:representation");
 
             /* add the metadatasets of the rep as datastreams */
             sparql.append(addMetadata(session, rep.getTechnical(), repPath +
@@ -679,43 +682,51 @@ public class ConnectorService {
         return new IntellectualEntityCollection(entities);
     }
 
-    public List<String> searchEntities(Session session, String terms, int offset,
+    public List<String> searchEntities(Session session, String terms,
+            int offset, int limit) throws RepositoryException {
+
+        return searchObjectOfType(session, "scape:intellectual-entity", terms,
+                offset, limit);
+    }
+
+    public List<String> searchRepresentations(Session session, String terms,
+            int offset, int limit) throws RepositoryException {
+        return searchObjectOfType(session, "scape:representation", terms,
+                offset, limit);
+    }
+
+    public List<String> searchFiles(Session session, String terms, int offset,
             int limit) throws RepositoryException {
+        return searchObjectOfType(session, "scape:file", terms, offset, limit);
+    }
 
-        final QueryManager queryManager = session.getWorkspace().getQueryManager();
+    public List<String> searchObjectOfType(final Session session,
+            final String mixinType, final String terms, final int offset,
+            final int limit) throws RepositoryException {
+        final QueryManager queryManager =
+                session.getWorkspace().getQueryManager();
 
-        final QueryObjectModelFactory factory =
-        queryManager.getQOMFactory();
+        final QueryObjectModelFactory factory = queryManager.getQOMFactory();
 
         final Source selector =
-        factory.selector("scape:intellectual-entity", "resourcesSelector");
+                factory.selector(mixinType, "resourcesSelector");
         final Constraint constraints =
-        factory.fullTextSearch("resourcesSelector", null, factory
-                .literal(session.getValueFactory().createValue(
-                        terms)));
+                factory.fullTextSearch("resourcesSelector", null, factory
+                        .literal(session.getValueFactory().createValue(terms)));
 
         final Query query =
-        factory.createQuery(selector, constraints, null, null);
-
+                factory.createQuery(selector, constraints, null, null);
 
         query.setLimit(limit);
         query.setOffset(offset);
         final QueryResult result = query.execute();
         final NodeIterator it = result.getNodes();
         final List<String> uris = new ArrayList<>();
-        while (it.hasNext()){
+        while (it.hasNext()) {
             Node n = it.nextNode();
             uris.add(n.getPath());
         }
         return uris;
-  }
-
-    public void searchRepresentations(Session session, String query,
-            int offset, int limit) {
-    }
-
-    public void
-            searchFiles(Session session, String query, int offset, int limit) {
     }
 
 }
