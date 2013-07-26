@@ -72,7 +72,7 @@ public class SRUSearch {
                         final IntellectualEntity ie =
                                 SRUSearch.this.connectorService.fetchEntity(
                                         session, uri.substring(uri
-                                                .lastIndexOf('/') + 1), false);
+                                                .lastIndexOf('/') + 1));
                         writeSRURecord(ie, output);
                     } catch (RepositoryException e) {
                         throw new IOException(e);
