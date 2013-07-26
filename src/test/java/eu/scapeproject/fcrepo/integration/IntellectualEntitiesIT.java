@@ -99,6 +99,20 @@ public class IntellectualEntitiesIT {
     }
 
     @Test
+    public void testIngestAndRetrieveIntellectualEntityWithRefs() throws Exception {
+        IntellectualEntity ie =
+                TestUtil.createTestEntityWithMultipleRepresentations("entity-ref-1");
+        this.postEntity(ie);
+
+        HttpGet get = new HttpGet(SCAPE_URL + "/entity/entity-ref-1?useReferences=yes");
+        HttpResponse resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        String xml = EntityUtils.toString(resp.getEntity());
+        System.out.println(xml);
+        get.releaseConnection();
+    }
+
+    @Test
     public void testIngestAndRetrieveRepresentation() throws Exception {
         IntellectualEntity ie =
                 TestUtil.createTestEntityWithMultipleRepresentations("entity-3");

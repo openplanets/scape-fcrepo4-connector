@@ -10,11 +10,13 @@ import java.io.OutputStream;
 
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -48,9 +50,8 @@ public class IntellectualEntities {
     @InjectedSession
     private Session session;
 
-
-
-    public IntellectualEntities() throws JAXBException {
+    public IntellectualEntities()
+            throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
@@ -66,8 +67,13 @@ public class IntellectualEntities {
     @Produces(MediaType.TEXT_XML)
     @Path("{id}")
     public Response retrieveEntity(@PathParam("id")
-    final String id) throws RepositoryException {
-        final IntellectualEntity ie = connectorService.fetchEntity(this.session, id);
+    final String id, @QueryParam("useReferences")
+    @DefaultValue("no")
+    final String useReferences) throws RepositoryException {
+
+        final boolean refs = useReferences.equalsIgnoreCase("yes");
+        final IntellectualEntity ie =
+                connectorService.fetchEntity(this.session, id);
         /* create a streaming METS response using the ScapeMarshaller */
         return Response.ok(new StreamingOutput() {
 
@@ -75,8 +81,7 @@ public class IntellectualEntities {
             public void write(OutputStream output) throws IOException,
                     WebApplicationException {
                 try {
-                    IntellectualEntities.this.marshaller.serialize(ie,
-                            output);
+                    IntellectualEntities.this.marshaller.serialize(ie, output, refs);
                 } catch (JAXBException e) {
                     throw new IOException(e);
                 }

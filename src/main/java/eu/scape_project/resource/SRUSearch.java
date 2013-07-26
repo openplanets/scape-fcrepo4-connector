@@ -68,10 +68,13 @@ public class SRUSearch {
                     WebApplicationException {
                 writeSRUHeader(output, uris.size());
                 for (String uri : uris) {
-                    try{
-                        final IntellectualEntity ie = SRUSearch.this.connectorService.fetchEntity(session, uri.substring(uri.lastIndexOf('/') + 1));
+                    try {
+                        final IntellectualEntity ie =
+                                SRUSearch.this.connectorService.fetchEntity(
+                                        session, uri.substring(uri
+                                                .lastIndexOf('/') + 1), false);
                         writeSRURecord(ie, output);
-                    }catch(RepositoryException e){
+                    } catch (RepositoryException e) {
                         throw new IOException(e);
                     }
                 }
@@ -100,10 +103,16 @@ public class SRUSearch {
                     WebApplicationException {
                 writeSRUHeader(output, uris.size());
                 for (String uri : uris) {
-                    try{
-                        final Representation rep = SRUSearch.this.connectorService.fetchRepresentation(session, uri.substring(uri.indexOf("/" + ConnectorService.ENTITY_FOLDER)));
+                    try {
+                        final Representation rep =
+                                SRUSearch.this.connectorService
+                                        .fetchRepresentation(
+                                                session,
+                                                uri.substring(uri
+                                                        .indexOf("/" +
+                                                                ConnectorService.ENTITY_FOLDER)));
                         writeSRURecord(rep, output);
-                    }catch(RepositoryException e){
+                    } catch (RepositoryException e) {
                         throw new IOException(e);
                     }
                 }
@@ -132,10 +141,16 @@ public class SRUSearch {
                     WebApplicationException {
                 writeSRUHeader(output, uris.size());
                 for (String uri : uris) {
-                    try{
-                        final File f = SRUSearch.this.connectorService.fetchFile(session, uri.substring(uri.indexOf("/" + ConnectorService.ENTITY_FOLDER)));
+                    try {
+                        final File f =
+                                SRUSearch.this.connectorService
+                                        .fetchFile(
+                                                session,
+                                                uri.substring(uri
+                                                        .indexOf("/" +
+                                                                ConnectorService.ENTITY_FOLDER)));
                         writeSRURecord(f, output);
-                    }catch(RepositoryException e){
+                    } catch (RepositoryException e) {
                         throw new IOException(e);
                     }
                 }
@@ -146,20 +161,20 @@ public class SRUSearch {
 
     private void writeSRURecord(Object o, OutputStream output)
             throws IOException {
-            final StringBuilder sru = new StringBuilder();
-            sru.append("<srw:record>");
-            sru.append("<srw:recordSchema>http://scapeproject.eu/schema/plato</srw:recordSchema>");
-            sru.append("<srw:recordData>");
-            output.write(sru.toString().getBytes());
-            try {
-                this.marshaller.serialize(o, output);
-            } catch (JAXBException e) {
-                throw new IOException(e);
-            }
-            sru.setLength(0);
-            sru.append("</srw:recordData>");
-            sru.append("</srw:record>");
-            output.write(sru.toString().getBytes());
+        final StringBuilder sru = new StringBuilder();
+        sru.append("<srw:record>");
+        sru.append("<srw:recordSchema>http://scapeproject.eu/schema/plato</srw:recordSchema>");
+        sru.append("<srw:recordData>");
+        output.write(sru.toString().getBytes());
+        try {
+            this.marshaller.serialize(o, output);
+        } catch (JAXBException e) {
+            throw new IOException(e);
+        }
+        sru.setLength(0);
+        sru.append("</srw:recordData>");
+        sru.append("</srw:record>");
+        output.write(sru.toString().getBytes());
     }
 
     private void writeSRUFooter(OutputStream output) throws IOException {
