@@ -16,6 +16,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -76,7 +77,7 @@ import gov.loc.videomd.VideoType;
 public class ConnectorService {
 
     public final static String ENTITY_FOLDER = "objects/scape/entities";
-
+    
     public final static String QUEUE_NODE = "/objects/scape/queue";
 
     //TODO: this should be taken from the UriInfo or at least from a bean config
@@ -727,6 +728,65 @@ public class ConnectorService {
             uris.add(n.getPath());
         }
         return uris;
+    }
+    
+    public String updateEntity(final Session session, final InputStream src,
+            String entityId) throws RepositoryException {
+    		
+    		String entityPath = ENTITY_FOLDER + "/" + entityId;
+            
+            if (this.objectService.exists(session, "/" + entityPath)) {
+                /* delete the old value to create the updated one */
+            	try {
+                    this.nodeService.deleteObject(session, "/" + entityPath);
+				} catch (Exception e) {
+					System.out.println(e.toString());
+				}
+            }
+            /* save the changes made to the objects */
+            session.save();
+            return addEntity(session, src);
+    }
+    
+    public String updateRepresentation(final Session session, final InputStream src,
+            String entityId, String repId) throws RepositoryException, JAXBException {
+
+        	final String repoPath = ENTITY_FOLDER + "/" + entityId + "/" + repId;
+            final String entityPath = ENTITY_FOLDER + "/" + entityId;
+            
+            if (this.objectService.exists(session, "/" + repoPath)) {
+                /* delete the old value to create the updated one */
+            	try {
+                    this.nodeService.deleteObject(session, "/" + repoPath);
+				} catch (Exception e) {
+					System.out.println(e.toString());
+				}
+            }
+            /* save the changes made to the objects */
+            session.save();
+            final Representation rep =
+            		(Representation) marshaller.deserialize(src);
+            return addRepresentations(session, Arrays.asList(rep), entityPath);
+    }
+    
+    public String updateMetadata(final Session session, final InputStream src,
+            String entityId) throws RepositoryException, JAXBException {
+    	
+            final String entityPath = ENTITY_FOLDER + "/entities/" + entityId + "DESCRIPTIVE";
+            
+            if (this.objectService.exists(session, "/" + entityPath)) {
+                /* delete the old value to create the updated one */
+            	try {
+                    this.nodeService.deleteObject(session, "/" + entityPath);
+				} catch (Exception e) {
+					System.out.println(e.toString());
+				}
+            }
+            /* save the changes made to the objects */
+            session.save();
+            final ElementContainer ec =
+            		(ElementContainer) marshaller.deserialize(src);
+            return addMetadata(session, ec, entityPath);
     }
 
 }

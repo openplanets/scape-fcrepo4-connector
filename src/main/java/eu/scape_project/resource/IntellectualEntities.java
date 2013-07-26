@@ -12,6 +12,7 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -54,6 +55,16 @@ public class IntellectualEntities {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
+	@PUT
+    @Produces(MediaType.TEXT_PLAIN)
+    @Path("{id}")
+    public Response updateEntity(@PathParam("id")
+    final String id, final InputStream src)
+            throws RepositoryException {
+        String id2 = connectorService.updateEntity(this.session, src, id);
+        return Response.status(Status.CREATED).entity(id2).build();
+    }
+    
     @POST
     @Produces(MediaType.TEXT_PLAIN)
     public Response ingestEntity(final InputStream src)

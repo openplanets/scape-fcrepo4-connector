@@ -5,16 +5,21 @@
 package eu.scape_project.resource;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
+import javax.ws.rs.core.Response.Status;
 import javax.xml.bind.JAXBException;
 
 import org.fcrepo.session.InjectedSession;
@@ -42,6 +47,18 @@ public class Representations {
     public Representations()
             throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
+    }
+    
+	@PUT
+    @Produces(MediaType.TEXT_PLAIN)
+    @Path("{entity-id}/{rep-id}")
+    public Response updateEntity(
+    		@PathParam("entity-id") final String entityId, 
+    		@PathParam("rep-id") final String repId, 
+    		final InputStream src)
+            throws RepositoryException, JAXBException {
+        String id2 = connectorService.updateRepresentation(this.session, src, entityId, repId);
+        return Response.status(Status.CREATED).entity(id2).build();
     }
 
     @GET

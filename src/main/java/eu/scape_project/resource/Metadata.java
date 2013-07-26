@@ -5,16 +5,21 @@
 package eu.scape_project.resource;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
+import javax.ws.rs.core.Response.Status;
 import javax.xml.bind.JAXBException;
 
 import org.fcrepo.session.InjectedSession;
@@ -42,7 +47,19 @@ public class Metadata {
             throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
     }
-
+    
+	@PUT
+    @Produces(MediaType.TEXT_PLAIN)
+    @Path("{id}")
+    public Response updateEntity(
+    		@PathParam("id") final String entityId,
+    		final InputStream src)
+            throws RepositoryException, JAXBException {
+		System.out.println(" asd");
+        String id2 = connectorService.updateMetadata(this.session, src, entityId);
+        return Response.status(Status.CREATED).entity(id2).build();
+    }
+	
     @GET
     @Path("{path: .*}")
     public Response retrieveFile(@PathParam("path")
