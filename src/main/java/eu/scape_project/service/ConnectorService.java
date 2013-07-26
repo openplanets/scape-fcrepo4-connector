@@ -58,6 +58,7 @@ import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 import edu.harvard.hul.ois.xml.ns.fits.fits_output.Fits;
+import eu.scape_project.util.ContentTypeInputStream;
 import eu.scapeproject.model.BitStream;
 import eu.scapeproject.model.File;
 import eu.scapeproject.model.Identifier;
@@ -163,6 +164,12 @@ public class ConnectorService {
         return bs.build();
     }
 
+    public ContentTypeInputStream fetchBinaryFile(final Session session, final String fileUri)
+            throws RepositoryException {
+        final Datastream ds = this.datastreamService.getDatastream(session, fileUri + "/DATA");
+        return new ContentTypeInputStream(ds.getMimeType(), ds.getContent());
+    }
+
     public File fetchFile(final Session session, final String fileUri)
             throws RepositoryException {
         final File.Builder f = new File.Builder();
@@ -194,6 +201,7 @@ public class ConnectorService {
 
         return f.build();
     }
+
 
     public Object fetchMetadata(final Session session, final String path)
             throws RepositoryException {
@@ -277,8 +285,6 @@ public class ConnectorService {
 
             final FedoraObject entityObject =
                     objectService.createObject(session, entityPath);
-            System.out.println(entityObject.getNode().getPrimaryNodeType()
-                    .getName());
             entityObject.getNode().addMixin("scape:intellectual-entity");
 
             /* add the metadata datastream for descriptive metadata */
@@ -367,7 +373,7 @@ public class ConnectorService {
                 /* add the binary data referenced in the file as a datastream */
                 final Node fileDs =
                         this.datastreamService.createDatastreamNode(session,
-                                filePath + "/DATA", "text/xml", src);
+                                filePath + "/DATA", f.getMimetype(), src);
 
                 /* add the metadata */
                 sparql.append(addMetadata(session, f.getTechnical(), filePath +

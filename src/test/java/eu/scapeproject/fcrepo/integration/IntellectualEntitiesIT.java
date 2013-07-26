@@ -135,7 +135,7 @@ public class IntellectualEntitiesIT {
     @Test
     public void testIngestAndRetrieveFile() throws Exception {
         IntellectualEntity ie =
-                TestUtil.createTestEntityWithMultipleRepresentations("entity-4");
+                TestUtil.createTestEntity("entity-4");
         this.postEntity(ie);
 
         Representation rep = ie.getRepresentations().get(0);
@@ -146,11 +146,7 @@ public class IntellectualEntitiesIT {
                         f.getIdentifier().getValue());
         HttpResponse resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        File fetched =
-                this.marshaller.deserialize(File.class, resp.getEntity()
-                        .getContent());
-        assertEquals(f.getIdentifier().getValue(), fetched.getIdentifier()
-                .getValue());
+        assertEquals("image/png", resp.getFirstHeader("Content-Type").getValue());
         get.releaseConnection();
     }
 
