@@ -1,6 +1,7 @@
 /**
  *
  */
+
 package eu.scape_project.resource;
 
 import java.io.IOException;
@@ -25,11 +26,11 @@ import eu.scape_project.service.ConnectorService;
 import eu.scapeproject.model.BitStream;
 import eu.scapeproject.util.ScapeMarshaller;
 
-
 @Component
 @Scope("prototype")
 @Path("/scape/bitstream")
 public class Bitstreams {
+
     private final ScapeMarshaller marshaller;
 
     @Autowired
@@ -68,5 +69,38 @@ public class Bitstreams {
         }).build();
     }
 
+    @GET
+    @Path("{entity-id}/{rep-id}/{file-id}/{bitstream-id}/{version-id}")
+    public Response retrieveBitstream(@PathParam("entity-id")
+    final String entityId, @PathParam("rep-id")
+    final String repId, @PathParam("file-id")
+    final String fileId, @PathParam("bitstream-id")
+    final String bsId, @PathParam("version-id")
+    final String versionId) throws RepositoryException {
+
+        final String path;
+        if (versionId == null) {
+            path = "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId +
+                            "/" + repId + "/" + fileId + "/" + bsId;
+
+        }else{
+            path = "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId + "/version-" + versionId +
+                    "/" + repId + "/" + fileId + "/" + bsId;
+
+        }
+        final BitStream bs = connectorService.fetchBitStream(session, path);
+        return Response.ok().entity(new StreamingOutput() {
+
+            @Override
+            public void write(OutputStream output) throws IOException,
+                    WebApplicationException {
+                try {
+                    Bitstreams.this.marshaller.serialize(bs, output);
+                } catch (JAXBException e) {
+                    throw new IOException(e);
+                }
+            }
+        }).build();
+    }
 
 }

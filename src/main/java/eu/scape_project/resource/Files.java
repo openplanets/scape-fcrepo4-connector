@@ -45,7 +45,19 @@ public class Files {
     final String entityId, @PathParam("rep-id")
     final String repId, @PathParam("file-id")
     final String fileId) throws RepositoryException {
-        final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId);
+        final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId, null);
+        return Response.ok().entity(src).type(src.getContentType()).build();
+    }
+
+
+    @GET
+    @Path("{entity-id}/{rep-id}/{file-id}/{version-id}")
+    public Response retrieveFile(@PathParam("entity-id")
+    final String entityId, @PathParam("rep-id")
+    final String repId, @PathParam("file-id")
+    final String fileId,@PathParam("version-id")
+    final String versionId) throws RepositoryException {
+        final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId, versionId);
         return Response.ok().entity(src).type(src.getContentType()).build();
     }
 }

@@ -51,7 +51,27 @@ public class Representations {
     public Response retrieveRepresentation(@PathParam("entity-id")
     final String entityId, @PathParam("rep-id")
     final String repId) throws RepositoryException {
-        final Representation r = connectorService.fetchRepresentation(this.session, entityId, repId);
+        final Representation r = connectorService.fetchRepresentation(this.session, entityId, repId, null);
+        return Response.ok().entity(new StreamingOutput() {
+
+            @Override
+            public void write(OutputStream output) throws IOException,
+                    WebApplicationException {
+                try {
+                    Representations.this.marshaller.serialize(r, output);
+                } catch (JAXBException e) {
+                    throw new IOException(e);
+                }
+            }
+        }).build();
+    }
+
+    @GET
+    @Path("{entity-id}/{rep-id}/{version-id}")
+    public Response retrieveRepresentation(@PathParam("entity-id")
+    final String entityId, @PathParam("rep-id")
+    final String repId, @PathParam("version-id") final int versionId) throws RepositoryException {
+        final Representation r = connectorService.fetchRepresentation(this.session, entityId, repId, versionId);
         return Response.ok().entity(new StreamingOutput() {
 
             @Override

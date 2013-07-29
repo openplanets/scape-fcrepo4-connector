@@ -194,17 +194,23 @@ public class ConnectorService {
     }
 
     public ContentTypeInputStream fetchBinaryFile(final Session session,
-            final String entityId, final String repId, final String fileId)
+            final String entityId, final String repId, final String fileId, final String versionId)
             throws RepositoryException {
 
-        final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
-        final FedoraObject fo =
-                this.objectService.getObject(session, entityPath);
-        final Model entityModel =
-                SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset());
-        final String dsPath =
-                this.getCurrentVersionPath(entityModel, entityPath) + "/" +
-                        repId + "/" + fileId + "/DATA";
+        final String entityPath, dsPath;
+        if (versionId == null) {
+            entityPath= "/" + ENTITY_FOLDER + "/" + entityId;
+            final FedoraObject fo =
+                    this.objectService.getObject(session, entityPath);
+            final Model entityModel =
+                    SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset());
+            dsPath = this.getCurrentVersionPath(entityModel, entityPath) + "/" +
+                            repId + "/" + fileId + "/DATA";
+        }else{
+            entityPath= "/" + ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
+            dsPath = entityPath + "/" + repId + "/" + fileId + "/DATA";
+        }
+
 
         final Datastream ds =
                 this.datastreamService.getDatastream(session, dsPath);
@@ -328,16 +334,21 @@ public class ConnectorService {
     }
 
     public Representation fetchRepresentation(final Session session,
-            final String entityId, String repId) throws RepositoryException {
+            final String entityId, String repId, Integer versionId) throws RepositoryException {
 
-        final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
-        final FedoraObject fo =
-                this.objectService.getObject(session, entityPath);
-        final Model entityModel =
-                SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset());
-        final String repPath =
-                this.getCurrentVersionPath(entityModel, entityPath) + "/" +
-                        repId;
+        String entityPath, repPath;
+        if (versionId == null){
+            entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
+            final FedoraObject fo = this.objectService.getObject(session, entityPath);
+            final Model entityModel =
+                    SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset());
+            repPath = this.getCurrentVersionPath(entityModel, entityPath) + "/" +
+                            repId;
+        }else{
+            entityPath = "/" + ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
+            repPath = entityPath + "/" + repId;
+        }
+
         return this.fetchRepresentation(session, repPath);
     }
 

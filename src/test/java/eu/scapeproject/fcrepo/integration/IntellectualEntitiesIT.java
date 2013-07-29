@@ -13,6 +13,8 @@ import info.lc.xmlns.textmd_v3.TextMD;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.util.Arrays;
 
 import javax.xml.bind.JAXBException;
 
@@ -104,18 +106,18 @@ public class IntellectualEntitiesIT {
         assertNotNull(ie.getDescriptive());
         assertEquals(ElementContainer.class, ie.getDescriptive().getClass());
 
-        for (Representation r: fetched.getRepresentations()){
+        for (Representation r : fetched.getRepresentations()) {
             assertTrue(r.getFiles().size() > 0);
             assertNotNull(r.getTechnical());
             assertNotNull(r.getProvenance());
             assertNotNull(r.getRights());
             assertNotNull(r.getSource());
 
-            for (File f: r.getFiles()){
+            for (File f : r.getFiles()) {
                 assertNotNull(f.getBitStreams());
                 assertTrue(f.getBitStreams().size() > 0);
                 assertNotNull(f.getTechnical());
-                for (BitStream bs: f.getBitStreams()){
+                for (BitStream bs : f.getBitStreams()) {
                     assertNotNull(bs.getTechnical());
                 }
             }
@@ -124,12 +126,15 @@ public class IntellectualEntitiesIT {
     }
 
     @Test
-    public void testIngestAndRetrieveIntellectualEntityWithRefs() throws Exception {
+    public void testIngestAndRetrieveIntellectualEntityWithRefs()
+            throws Exception {
         IntellectualEntity ie =
                 TestUtil.createTestEntityWithMultipleRepresentations("entity-ref-1");
         this.postEntity(ie);
 
-        HttpGet get = new HttpGet(SCAPE_URL + "/entity/entity-ref-1?useReferences=yes");
+        HttpGet get =
+                new HttpGet(SCAPE_URL +
+                        "/entity/entity-ref-1?useReferences=yes");
         HttpResponse resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         String xml = EntityUtils.toString(resp.getEntity());
@@ -159,8 +164,7 @@ public class IntellectualEntitiesIT {
 
     @Test
     public void testIngestAndRetrieveFile() throws Exception {
-        IntellectualEntity ie =
-                TestUtil.createTestEntity("entity-4");
+        IntellectualEntity ie = TestUtil.createTestEntity("entity-4");
         this.postEntity(ie);
 
         Representation rep = ie.getRepresentations().get(0);
@@ -171,7 +175,8 @@ public class IntellectualEntitiesIT {
                         f.getIdentifier().getValue());
         HttpResponse resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        assertEquals("image/png", resp.getFirstHeader("Content-Type").getValue());
+        assertEquals("image/png", resp.getFirstHeader("Content-Type")
+                .getValue());
         get.releaseConnection();
     }
 
@@ -257,14 +262,17 @@ public class IntellectualEntitiesIT {
         /* check the desc metadata of the entity */
         HttpPost post = new HttpPost(SCAPE_URL + "/entity-list");
         String uriList =
-                FEDORA_URL + "/scape/entity/entity-8\n" +
-                        FEDORA_URL + "scape/entity/entity-9";
-        post.setEntity(new StringEntity(uriList, ContentType.parse("text/uri-list")));
+                FEDORA_URL + "/scape/entity/entity-8\n" + FEDORA_URL +
+                        "scape/entity/entity-9";
+        post.setEntity(new StringEntity(uriList, ContentType
+                .parse("text/uri-list")));
         HttpResponse resp = this.client.execute(post);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        IntellectualEntityCollection coll = this.marshaller.deserialize(IntellectualEntityCollection.class, resp.getEntity().getContent());
+        IntellectualEntityCollection coll =
+                this.marshaller.deserialize(IntellectualEntityCollection.class,
+                        resp.getEntity().getContent());
         post.releaseConnection();
-        assertEquals(2,coll.getEntities().size());
+        assertEquals(2, coll.getEntities().size());
     }
 
     @Test
@@ -298,27 +306,6 @@ public class IntellectualEntitiesIT {
     }
 
     @Test
-    public void testIngestAndSearchEntity() throws Exception {
-        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-11");
-        this.postEntity(ie1);
-
-        IntellectualEntity ie2 = TestUtil.createTestEntity("entity-12");
-        this.postEntity(ie2);
-
-        /* search via SRU */
-        HttpGet get = new HttpGet(SCAPE_URL + "/sru/entities?version=1&operation=searchRetrieve&query=*");
-        HttpResponse resp = this.client.execute(get);
-        assertEquals(200, resp.getStatusLine().getStatusCode());
-        String xml = EntityUtils.toString(resp.getEntity(),"UTF-8");
-        System.out.println(xml);
-        assertTrue(0 < xml.length());
-        assertTrue(xml.indexOf("ID=\"entity-12\" OBJID=\"entity-12\"") > 0);
-        assertTrue(xml.indexOf("ID=\"entity-11\" OBJID=\"entity-11\"") > 0);
-        get.releaseConnection();
-
-    }
-
-    @Test
     public void testIngestAndSearchRepresentation() throws Exception {
         IntellectualEntity ie1 = TestUtil.createTestEntity("entity-13");
         this.postEntity(ie1);
@@ -327,13 +314,16 @@ public class IntellectualEntitiesIT {
         this.postEntity(ie2);
 
         /* search via SRU */
-        HttpGet get = new HttpGet(SCAPE_URL + "/sru/representations?version=1&operation=searchRetrieve&query=*");
+        HttpGet get =
+                new HttpGet(SCAPE_URL +
+                        "/sru/representations?version=1&operation=searchRetrieve&query=*");
         HttpResponse resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        String xml = EntityUtils.toString(resp.getEntity(),"UTF-8");
+        String xml = EntityUtils.toString(resp.getEntity(), "UTF-8");
         System.out.println(xml);
         assertTrue(0 < xml.length());
-        assertTrue(xml.indexOf("<scape:identifier type=\"String\"><scape:value>representation-1</scape:value></scape:identifier>") > 0);
+        assertTrue(xml
+                .indexOf("<scape:identifier type=\"String\"><scape:value>representation-1</scape:value></scape:identifier>") > 0);
         get.releaseConnection();
 
     }
@@ -347,13 +337,16 @@ public class IntellectualEntitiesIT {
         this.postEntity(ie2);
 
         /* search via SRU */
-        HttpGet get = new HttpGet(SCAPE_URL + "/sru/files?version=1&operation=searchRetrieve&query=*");
+        HttpGet get =
+                new HttpGet(SCAPE_URL +
+                        "/sru/files?version=1&operation=searchRetrieve&query=*");
         HttpResponse resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        String xml = EntityUtils.toString(resp.getEntity(),"UTF-8");
+        String xml = EntityUtils.toString(resp.getEntity(), "UTF-8");
         System.out.println(xml);
         assertTrue(0 < xml.length());
-        assertTrue(xml.indexOf("<scape:identifier type=\"String\"><scape:value>file-1</scape:value></scape:identifier>") > 0);
+        assertTrue(xml
+                .indexOf("<scape:identifier type=\"String\"><scape:value>file-1</scape:value></scape:identifier>") > 0);
         get.releaseConnection();
 
     }
@@ -370,16 +363,15 @@ public class IntellectualEntitiesIT {
         lit_title.getContent().add("Object Updated");
         cnt.getAny().add(dcFac.createTitle(lit_title));
 
-
-        IntellectualEntity ie2 = new IntellectualEntity.Builder(ie1)
-            .descriptive(cnt)
-            .build();
+        IntellectualEntity ie2 =
+                new IntellectualEntity.Builder(ie1).descriptive(cnt).build();
 
         /* update the current object */
         HttpPut put = new HttpPut(SCAPE_URL + "/entity/entity-17");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(ie2, sink);
-        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
         HttpResponse resp = this.client.execute(put);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         put.releaseConnection();
@@ -388,34 +380,46 @@ public class IntellectualEntitiesIT {
         HttpGet get = new HttpGet(SCAPE_URL + "/entity/entity-17");
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        IntellectualEntity fetched = this.marshaller.deserialize(IntellectualEntity.class, resp.getEntity().getContent());
+        IntellectualEntity fetched =
+                this.marshaller.deserialize(IntellectualEntity.class, resp
+                        .getEntity().getContent());
         get.releaseConnection();
         assertNotNull(fetched.getDescriptive());
-        assertEquals(ElementContainer.class, fetched.getDescriptive().getClass());
+        assertEquals(ElementContainer.class, fetched.getDescriptive()
+                .getClass());
         ElementContainer dc = (ElementContainer) fetched.getDescriptive();
-        assertEquals("Object Updated",dc.getAny().get(0).getValue().getContent().get(0));
+        assertEquals("Object Updated", dc.getAny().get(0).getValue()
+                .getContent().get(0));
 
-        /* check that the old version is returned when specifically asked for*/
+        /* check that the old version is returned when specifically asked for */
         get = new HttpGet(SCAPE_URL + "/entity/entity-17/1");
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        fetched = this.marshaller.deserialize(IntellectualEntity.class, resp.getEntity().getContent());
+        fetched =
+                this.marshaller.deserialize(IntellectualEntity.class, resp
+                        .getEntity().getContent());
         get.releaseConnection();
         assertNotNull(fetched.getDescriptive());
-        assertEquals(ElementContainer.class, fetched.getDescriptive().getClass());
+        assertEquals(ElementContainer.class, fetched.getDescriptive()
+                .getClass());
         dc = (ElementContainer) fetched.getDescriptive();
-        assertEquals("Object 1",dc.getAny().get(0).getValue().getContent().get(0));
+        assertEquals("Object 1", dc.getAny().get(0).getValue().getContent()
+                .get(0));
 
-        /* check that the new version is returned when specifically asked for*/
+        /* check that the new version is returned when specifically asked for */
         get = new HttpGet(SCAPE_URL + "/entity/entity-17/2");
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        fetched = this.marshaller.deserialize(IntellectualEntity.class, resp.getEntity().getContent());
+        fetched =
+                this.marshaller.deserialize(IntellectualEntity.class, resp
+                        .getEntity().getContent());
         get.releaseConnection();
         assertNotNull(fetched.getDescriptive());
-        assertEquals(ElementContainer.class, fetched.getDescriptive().getClass());
+        assertEquals(ElementContainer.class, fetched.getDescriptive()
+                .getClass());
         dc = (ElementContainer) fetched.getDescriptive();
-        assertEquals("Object Updated",dc.getAny().get(0).getValue().getContent().get(0));
+        assertEquals("Object Updated", dc.getAny().get(0).getValue()
+                .getContent().get(0));
     }
 
     @Test
@@ -423,20 +427,25 @@ public class IntellectualEntitiesIT {
         IntellectualEntity ie1 = TestUtil.createTestEntity("entity-18");
         this.postEntity(ie1);
 
-        Representation r = new Representation.Builder(ie1.getRepresentations().get(0))
-            .title("title update")
-            .build();
+        Representation r =
+                new Representation.Builder(ie1.getRepresentations().get(0))
+                        .title("title update").build();
 
-        HttpPut put = new HttpPut(SCAPE_URL + "/representation/entity-18/" + r.getIdentifier().getValue());
+        HttpPut put =
+                new HttpPut(SCAPE_URL + "/representation/entity-18/" +
+                        r.getIdentifier().getValue());
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(r, sink);
-        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
         HttpResponse resp = this.client.execute(put);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         put.releaseConnection();
 
         /* fetch the representation and check that the title has been updated */
-        HttpGet get =new HttpGet(SCAPE_URL + "/representation/entity-18/" +  r.getIdentifier().getValue());
+        HttpGet get =
+                new HttpGet(SCAPE_URL + "/representation/entity-18/" +
+                        r.getIdentifier().getValue());
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         Representation fetched =
@@ -444,7 +453,7 @@ public class IntellectualEntitiesIT {
                         .getEntity().getContent());
         assertEquals(r.getIdentifier().getValue(), fetched.getIdentifier()
                 .getValue());
-        assertEquals("title update", r.getTitle());
+        assertEquals("title update", fetched.getTitle());
         get.releaseConnection();
 
     }
@@ -461,23 +470,27 @@ public class IntellectualEntitiesIT {
         lit_title.getContent().add("DC metadata updated");
         cnt.getAny().add(dcFac.createTitle(lit_title));
 
-        HttpPut put = new HttpPut(SCAPE_URL + "/metadata/entity-19/DESCRIPTIVE");
+        HttpPut put =
+                new HttpPut(SCAPE_URL + "/metadata/entity-19/DESCRIPTIVE");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(cnt, sink);
 
-        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
         HttpResponse resp = this.client.execute(put);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         put.releaseConnection();
 
         /* fetch the entity and check that the title has been updated */
-        HttpGet get =new HttpGet(SCAPE_URL + "/metadata/entity-19/DESCRIPTIVE");
+        HttpGet get =
+                new HttpGet(SCAPE_URL + "/metadata/entity-19/DESCRIPTIVE");
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         ElementContainer fetched =
-                (ElementContainer) this.marshaller.deserialize(resp
-                .getEntity().getContent());
-        assertEquals("DC metadata updated", fetched.getAny().get(0).getValue().getContent().get(0));
+                (ElementContainer) this.marshaller.deserialize(resp.getEntity()
+                        .getContent());
+        assertEquals("DC metadata updated", fetched.getAny().get(0).getValue()
+                .getContent().get(0));
         get.releaseConnection();
 
     }
@@ -494,23 +507,29 @@ public class IntellectualEntitiesIT {
         lit_title.getContent().add("SOURCE metadata updated");
         cnt.getAny().add(dcFac.createTitle(lit_title));
 
-        HttpPut put = new HttpPut(SCAPE_URL + "/metadata/entity-20/representation-1/SOURCE");
+        HttpPut put =
+                new HttpPut(SCAPE_URL +
+                        "/metadata/entity-20/representation-1/SOURCE");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(cnt, sink);
 
-        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
         HttpResponse resp = this.client.execute(put);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         put.releaseConnection();
 
         /* fetch the entity and check that the title has been updated */
-        HttpGet get =new HttpGet(SCAPE_URL + "/metadata/entity-20/representation-1/SOURCE");
+        HttpGet get =
+                new HttpGet(SCAPE_URL +
+                        "/metadata/entity-20/representation-1/SOURCE");
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         ElementContainer fetched =
-                (ElementContainer) this.marshaller.deserialize(resp
-                .getEntity().getContent());
-        assertEquals("SOURCE metadata updated", fetched.getAny().get(0).getValue().getContent().get(0));
+                (ElementContainer) this.marshaller.deserialize(resp.getEntity()
+                        .getContent());
+        assertEquals("SOURCE metadata updated", fetched.getAny().get(0)
+                .getValue().getContent().get(0));
         get.releaseConnection();
 
     }
@@ -520,21 +539,26 @@ public class IntellectualEntitiesIT {
         IntellectualEntity ie1 = TestUtil.createTestEntity("entity-21");
         this.postEntity(ie1);
 
-
-        HttpPut put = new HttpPut(SCAPE_URL + "/metadata/entity-21/representation-1/file-1/TECHNICAL");
+        HttpPut put =
+                new HttpPut(SCAPE_URL +
+                        "/metadata/entity-21/representation-1/file-1/TECHNICAL");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(TestUtil.createFITSRecord(), sink);
 
-        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
         HttpResponse resp = this.client.execute(put);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         put.releaseConnection();
 
         /* fetch the entity and check that the title has been updated */
-        HttpGet get =new HttpGet(SCAPE_URL + "/metadata/entity-21/representation-1/file-1/TECHNICAL");
+        HttpGet get =
+                new HttpGet(SCAPE_URL +
+                        "/metadata/entity-21/representation-1/file-1/TECHNICAL");
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        Object fetched =  this.marshaller.deserialize(resp.getEntity().getContent());
+        Object fetched =
+                this.marshaller.deserialize(resp.getEntity().getContent());
         assertEquals(Fits.class, fetched.getClass());
         get.releaseConnection();
 
@@ -545,21 +569,26 @@ public class IntellectualEntitiesIT {
         IntellectualEntity ie1 = TestUtil.createTestEntity("entity-22");
         this.postEntity(ie1);
 
-
-        HttpPut put = new HttpPut(SCAPE_URL + "/metadata/entity-22/representation-1/file-1/bitstream-1/TECHNICAL");
+        HttpPut put =
+                new HttpPut(SCAPE_URL +
+                        "/metadata/entity-22/representation-1/file-1/bitstream-1/TECHNICAL");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(TestUtil.createMIXRecord(), sink);
 
-        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
         HttpResponse resp = this.client.execute(put);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         put.releaseConnection();
 
         /* fetch the entity and check that the title has been updated */
-        HttpGet get =new HttpGet(SCAPE_URL + "/metadata/entity-22/representation-1/file-1/bitstream-1/TECHNICAL");
+        HttpGet get =
+                new HttpGet(SCAPE_URL +
+                        "/metadata/entity-22/representation-1/file-1/bitstream-1/TECHNICAL");
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        Object fetched =  this.marshaller.deserialize(resp.getEntity().getContent());
+        Object fetched =
+                this.marshaller.deserialize(resp.getEntity().getContent());
         assertEquals(Mix.class, fetched.getClass());
         get.releaseConnection();
 
@@ -570,21 +599,145 @@ public class IntellectualEntitiesIT {
         IntellectualEntity ie1 = TestUtil.createTestEntity("entity-23");
         this.postEntity(ie1);
 
-        HttpPut put = new HttpPut(SCAPE_URL + "/metadata/entity-23/representation-1/file-1/bitstream-1/TECHNICAL");
+        HttpPut put =
+                new HttpPut(SCAPE_URL +
+                        "/metadata/entity-23/representation-1/file-1/bitstream-1/TECHNICAL");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(TestUtil.createMIXRecord(), sink);
 
-        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
         HttpResponse resp = this.client.execute(put);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         put.releaseConnection();
 
         /* fetch the entity and check that the title has been updated */
-        HttpGet get =new HttpGet(SCAPE_URL + "/entity-version-list/entity-23");
+        HttpGet get = new HttpGet(SCAPE_URL + "/entity-version-list/entity-23");
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
-        VersionList fetched =  (VersionList) this.marshaller.deserialize(resp.getEntity().getContent());
+        VersionList fetched =
+                (VersionList) this.marshaller.deserialize(resp.getEntity()
+                        .getContent());
         assertEquals(2, fetched.getVersionIdentifiers().size());
+        get.releaseConnection();
+
+    }
+
+    @Test
+    public void testIngestAndUpdateRepresentationAndFetchOldVersion()
+            throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-24");
+        this.postEntity(ie1);
+
+        Representation r =
+                new Representation.Builder(ie1.getRepresentations().get(0))
+                        .title("title update").build();
+
+        HttpPut put =
+                new HttpPut(SCAPE_URL + "/representation/entity-24/" +
+                        r.getIdentifier().getValue());
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(r, sink);
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
+        HttpResponse resp = this.client.execute(put);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        put.releaseConnection();
+
+        /* fetch the representation and check that the title has been updated */
+        HttpGet get =
+                new HttpGet(SCAPE_URL + "/representation/entity-24/" +
+                        r.getIdentifier().getValue() + "/1");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        Representation fetched =
+                this.marshaller.deserialize(Representation.class, resp
+                        .getEntity().getContent());
+        assertEquals(r.getIdentifier().getValue(), fetched.getIdentifier()
+                .getValue());
+        assertEquals("Text representation", fetched.getTitle());
+        get.releaseConnection();
+
+    }
+
+    @Test
+    public void testIngestAndUpdateFileAndFetchOldVersion() throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-25");
+        this.postEntity(ie1);
+
+        File f = new File.Builder(ie1.getRepresentations().get(0).getFiles().get(0))
+            .uri(URI.create("http://example.com/data"))
+            .filename("foo.xml")
+            .build();
+
+        Representation r = new Representation.Builder(ie1.getRepresentations().get(0))
+            .title("title update")
+            .files(Arrays.asList(f))
+            .build();
+
+        HttpPut put = new HttpPut(SCAPE_URL + "/representation/entity-25/" + r.getIdentifier().getValue());
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(r, sink);
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        HttpResponse resp = this.client.execute(put);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        put.releaseConnection();
+
+        /* fetch the file  */
+        HttpGet get =new HttpGet(SCAPE_URL + "/file/entity-25/" +  r.getIdentifier().getValue() + "/" + f.getIdentifier().getValue() + "/1");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        get.releaseConnection();
+
+    }
+
+    @Test
+    public void testIngestAndUpdateBitstreamAndFetchOldVersion() throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-26");
+        this.postEntity(ie1);
+
+        HttpPut put =
+                new HttpPut(SCAPE_URL +
+                        "/metadata/entity-26/representation-1/file-1/bitstream-1/TECHNICAL");
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(TestUtil.createMIXRecord(), sink);
+
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
+        HttpResponse resp = this.client.execute(put);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        put.releaseConnection();
+
+        /* fetch the entity and check that the title has been updated */
+        HttpGet get =
+                new HttpGet(SCAPE_URL +
+                        "/bitstream/entity-26/representation-1/file-1/bitstream-1/1");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        BitStream fetched =
+                (BitStream) this.marshaller.deserialize(resp.getEntity().getContent());
+        assertEquals(Fits.class, fetched.getTechnical().getClass());
+        get.releaseConnection();
+
+    }
+
+    @Test
+    public void testIngestAndSearchEntity() throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-11");
+        this.postEntity(ie1);
+
+        IntellectualEntity ie2 = TestUtil.createTestEntity("entity-12");
+        this.postEntity(ie2);
+
+        /* search via SRU */
+        HttpGet get =
+                new HttpGet(SCAPE_URL +
+                        "/sru/entities?version=1&operation=searchRetrieve&query=*");
+        HttpResponse resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        String xml = EntityUtils.toString(resp.getEntity(), "UTF-8");
+        System.out.println(xml);
+        assertTrue(0 < xml.length());
         get.releaseConnection();
 
     }
@@ -605,6 +758,5 @@ public class IntellectualEntitiesIT {
         assertTrue(id.length() > 0);
         post.releaseConnection();
     }
-
 
 }
