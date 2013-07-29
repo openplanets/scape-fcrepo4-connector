@@ -231,7 +231,8 @@ public class ConnectorService {
         f.mimetype(getFirstLiteralString(repModel, parent,
                 "http://scapeproject.eu/model#hasMimeType"));
         String[] ids = fileUri.split("/");
-        f.uri(URI.create(fedoraUrl + "/scape/file/" + ids[ids.length - 4] + "/" + ids[ids.length - 2] + "/" + ids[ids.length - 1]));
+        f.uri(URI.create(fedoraUrl + "/scape/file/" + ids[ids.length - 4] +
+                "/" + ids[ids.length - 2] + "/" + ids[ids.length - 1]));
 
         /* discover all the Bistreams and add them to the file */
         final List<BitStream> streams = new ArrayList<>();
@@ -721,8 +722,8 @@ public class ConnectorService {
 
     }
 
-    public void updateMetadata(final Session session, final String path, final InputStream src)
-            throws RepositoryException {
+    public void updateMetadata(final Session session, final String path,
+            final InputStream src) throws RepositoryException {
         String[] ids = path.split("/");
         final String entityId = ids[0];
         final String metadataName = ids[ids.length - 1];
@@ -733,17 +734,18 @@ public class ConnectorService {
                 break;
             case 3:
                 /* it's rep metadata */
-                updateRepresentationMetadata(session, entityId, ids[1], metadataName,
-                        src);
+                updateRepresentationMetadata(session, entityId, ids[1],
+                        metadataName, src);
                 break;
             case 4:
                 /* it's file metadata */
-                updateFileMetadata(session, entityId, ids[1], ids[2], metadataName, src);
+                updateFileMetadata(session, entityId, ids[1], ids[2],
+                        metadataName, src);
                 break;
             case 5:
                 /* it's bitstream metadata */
-                updateBitStreamMetadata(session, entityId, ids[1], ids[2], ids[3],
-                        metadataName, src);
+                updateBitStreamMetadata(session, entityId, ids[1], ids[2],
+                        ids[3], metadataName, src);
                 break;
             default:
                 throw new RepositoryException(
@@ -751,37 +753,175 @@ public class ConnectorService {
         }
     }
 
-    private void
-            updateBitStreamMetadata(Session session, String entityId, String string,
-                    String string2, String string3, String metadataName,
-                    InputStream src) {
-
-    }
-
-    private void updateFileMetadata(Session session, String entityId, String string,
-            String string2, String metadataName, InputStream src) {
-        // TODO Auto-generated method stub
-
-    }
-
-    private void updateRepresentationMetadata(Session session, String entityId, String string,
-            String metadataName, InputStream src) {
-        // TODO Auto-generated method stub
-
-    }
-
-    private void updateEntityMetadata(Session session, String entityId, String metadataName,
+    private void updateBitStreamMetadata(Session session, String entityId,
+            String repId, String fileId, String bsId, String metadataName,
             InputStream src) throws RepositoryException{
+
+        try {
+
+            if (!metadataName.equals("TECHNICAL")) {
+                throw new RepositoryException("Unknown metadata type " +
+                        metadataName);
+            }
+            final Object metadata = this.marshaller.deserialize(src);
+
+            final List<Representation> representations = new ArrayList<>();
+            final IntellectualEntity orig = this.fetchEntity(session, entityId);
+            for (Representation r : orig.getRepresentations()) {
+                if (!r.getIdentifier().getValue().equals(repId)) {
+                    representations.add(r);
+                } else {
+                    Representation.Builder newRep = new Representation.Builder(r);
+                    List<File> files = new ArrayList<>();
+                    for (File f: r.getFiles()){
+                        if (!f.getIdentifier().getValue().equals(fileId)){
+                            files.add(f);
+                        }else{
+                            File.Builder newFile = new File.Builder(f);
+                            List<BitStream> bitstreams = new ArrayList<>();
+                            for (BitStream bs: f.getBitStreams()){
+                                if (!bs.getIdentifier().getValue().equals(bsId)){
+                                    bitstreams.add(bs);
+                                }else{
+                                    BitStream newBs = new BitStream.Builder(bs)
+                                        .technical(metadata)
+                                        .build();
+                                    bitstreams.add(newBs);
+                                }
+                            }
+                            newFile.bitStreams(bitstreams);
+                            files.add(newFile.build());
+                        }
+                    }
+                    newRep.files(files);
+                    representations.add(newRep.build());
+                }
+            }
+
+            final IntellectualEntity ieUpdate =
+                    new IntellectualEntity.Builder(orig).representations(
+                            representations).build();
+
+            final ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            this.marshaller.serialize(ieUpdate, sink);
+            this.updateEntity(session, new ByteArrayInputStream(sink
+                    .toByteArray()), entityId);
+
+        } catch (JAXBException e) {
+            throw new RepositoryException(e);
+        }
+    }
+
+    private void updateFileMetadata(Session session, String entityId,
+            String repId, String fileId, String metadataName, InputStream src)
+            throws RepositoryException {
+        try {
+
+            if (!metadataName.equals("TECHNICAL")) {
+                throw new RepositoryException("Unknown metadata type " +
+                        metadataName);
+            }
+            final Object metadata = this.marshaller.deserialize(src);
+
+            final List<Representation> representations = new ArrayList<>();
+            final IntellectualEntity orig = this.fetchEntity(session, entityId);
+            for (Representation r : orig.getRepresentations()) {
+                if (!r.getIdentifier().getValue().equals(repId)) {
+                    representations.add(r);
+                } else {
+                    Representation.Builder newRep = new Representation.Builder(r);
+                    List<File> files = new ArrayList<>();
+                    for (File f: r.getFiles()){
+                        if (!f.getIdentifier().getValue().equals(fileId)){
+                            files.add(f);
+                        }else{
+                            File newFile = new File.Builder(f)
+                                .technical(metadata)
+                                .build();
+                            files.add(newFile);
+                        }
+                    }
+                    newRep.files(files);
+                    representations.add(newRep.build());
+                }
+            }
+
+            final IntellectualEntity ieUpdate =
+                    new IntellectualEntity.Builder(orig).representations(
+                            representations).build();
+
+            final ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            this.marshaller.serialize(ieUpdate, sink);
+            this.updateEntity(session, new ByteArrayInputStream(sink
+                    .toByteArray()), entityId);
+
+        } catch (JAXBException e) {
+            throw new RepositoryException(e);
+        }
+    }
+
+    private void updateRepresentationMetadata(Session session, String entityId,
+            String repId, String metadataName, InputStream src)
+            throws RepositoryException {
+
+        try {
+
+            if (!(metadataName.equals("TECHNICAL") ||
+                    metadataName.equals("SOURCE") ||
+                    metadataName.equals("PROVENANCE") || metadataName
+                        .equals("RIGHTS"))) {
+                throw new RepositoryException("Unknown metadata type " +
+                        metadataName);
+            }
+            final Object metadata = this.marshaller.deserialize(src);
+
+            final List<Representation> representations = new ArrayList<>();
+            final IntellectualEntity orig = this.fetchEntity(session, entityId);
+            for (Representation r : orig.getRepresentations()) {
+                if (!r.getIdentifier().getValue().equals(repId)) {
+                    representations.add(r);
+                } else {
+                    Representation.Builder newRep =
+                            new Representation.Builder(r);
+                    if (metadataName.equals("TECHNICAL")) {
+                        newRep.technical(metadata);
+                    } else if (metadataName.equals("SOURCE")) {
+                        newRep.source(metadata);
+                    } else if (metadataName.equals("PROVENANCE")) {
+                        newRep.provenance(metadata);
+                    } else if (metadataName.equals("RIGHTS")) {
+                        newRep.rights(metadata);
+                    }
+                    representations.add(newRep.build());
+                }
+            }
+
+            final IntellectualEntity ieUpdate =
+                    new IntellectualEntity.Builder(orig).representations(
+                            representations).build();
+
+            final ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            this.marshaller.serialize(ieUpdate, sink);
+            this.updateEntity(session, new ByteArrayInputStream(sink
+                    .toByteArray()), entityId);
+
+        } catch (JAXBException e) {
+            throw new RepositoryException(e);
+        }
+    }
+
+    private void updateEntityMetadata(Session session, String entityId,
+            String metadataName, InputStream src) throws RepositoryException {
         try {
             final IntellectualEntity orig = this.fetchEntity(session, entityId);
-            if (!metadataName.equals("DESCRIPTIVE")){
-                throw new RepositoryException("Unknown metadata type " +metadataName);
+            if (!metadataName.equals("DESCRIPTIVE")) {
+                throw new RepositoryException("Unknown metadata type " +
+                        metadataName);
             }
             final Object desc = this.marshaller.deserialize(src);
             final IntellectualEntity ieUpdate =
-                    new IntellectualEntity.Builder(orig)
-                .descriptive(desc)
-                .build();
+                    new IntellectualEntity.Builder(orig).descriptive(desc)
+                            .build();
 
             final ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ieUpdate, sink);
