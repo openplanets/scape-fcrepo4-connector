@@ -5,14 +5,18 @@
 package eu.scape_project.resource;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import javax.xml.bind.JAXBException;
@@ -61,5 +65,13 @@ public class Metadata {
                 }
             }
         }).build();
+    }
+
+    @PUT
+    @Path("{path: .*}")
+    @Consumes({MediaType.TEXT_XML})
+    public Response updateMetadata(@PathParam("path") String path, final InputStream src) throws RepositoryException {
+        this.connectorService.updateMetadata(this.session, path, src);
+        return Response.ok().build();
     }
 }

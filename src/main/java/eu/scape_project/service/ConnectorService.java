@@ -115,9 +115,9 @@ public class ConnectorService {
         }
     }
 
-    public IntellectualEntity fetchEntity(final Session session,
-            final String id)
-            throws RepositoryException {
+    public IntellectualEntity
+            fetchEntity(final Session session, final String id)
+                    throws RepositoryException {
         return fetchEntity(session, id, null);
     }
 
@@ -135,11 +135,10 @@ public class ConnectorService {
                 SerializationUtils.unifyDatasetModel(ieObject
                         .getPropertiesDataset());
         String versionPath;
-        if (versionNumber != null){
+        if (versionNumber != null) {
             versionPath = entityPath + "/version-" + versionNumber;
-        }else{
-            versionPath =
-                    getCurrentVersionPath(entityModel, entityPath);
+        } else {
+            versionPath = getCurrentVersionPath(entityModel, entityPath);
         }
 
         final FedoraObject versionObject =
@@ -231,7 +230,8 @@ public class ConnectorService {
                 "http://scapeproject.eu/model#hasFileName"));
         f.mimetype(getFirstLiteralString(repModel, parent,
                 "http://scapeproject.eu/model#hasMimeType"));
-        f.uri(URI.create(fedoraUrl + "/" + ENTITY_FOLDER + "/" + fileId));
+        String[] ids = fileUri.split("/");
+        f.uri(URI.create(fedoraUrl + "/scape/file/" + ids[ids.length - 4] + "/" + ids[ids.length - 2] + "/" + ids[ids.length - 1]));
 
         /* discover all the Bistreams and add them to the file */
         final List<BitStream> streams = new ArrayList<>();
@@ -251,7 +251,7 @@ public class ConnectorService {
         String[] ids = path.substring(ENTITY_FOLDER.length() + 2).split("/");
         String entityPath = "/" + ENTITY_FOLDER + "/" + ids[0];
         final FedoraObject entityObject =
-                objectService.createObject(session, entityPath);
+                objectService.getObject(session, entityPath);
 
         StringBuilder versionPath = new StringBuilder();
         versionPath.append(this.getCurrentVersionPath(SerializationUtils
@@ -318,7 +318,7 @@ public class ConnectorService {
         final List<File> files = new ArrayList<>();
         for (String fileUri : getLiteralStrings(repModel, parent,
                 "http://scapeproject.eu/model#hasFile")) {
-            files.add(fetchFile(session, fileUri.substring(11)));
+            files.add(fetchFile(session, fileUri.substring(12)));
         }
 
         rep.files(files);
@@ -693,31 +693,104 @@ public class ConnectorService {
     }
 
     public void updateRepresentation(Session session, String entityId,
-            String repId, InputStream src) throws RepositoryException{
+            String repId, InputStream src) throws RepositoryException {
         try {
-            final Representation rep = (Representation) this.marshaller.deserialize(src);
+            final Representation rep =
+                    (Representation) this.marshaller.deserialize(src);
             final List<Representation> representations = new ArrayList<>();
             final IntellectualEntity orig = this.fetchEntity(session, entityId);
-            for (Representation r: orig.getRepresentations()){
-                if (!r.getIdentifier().getValue().equals(repId)){
+            for (Representation r : orig.getRepresentations()) {
+                if (!r.getIdentifier().getValue().equals(repId)) {
                     representations.add(r);
                 }
             }
             representations.add(rep);
 
-            final IntellectualEntity ieUpdate = new IntellectualEntity.Builder(orig)
-                .representations(representations)
-                .build();
+            final IntellectualEntity ieUpdate =
+                    new IntellectualEntity.Builder(orig).representations(
+                            representations).build();
 
             final ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ieUpdate, sink);
-            this.updateEntity(session, new ByteArrayInputStream(sink.toByteArray()), entityId);
+            this.updateEntity(session, new ByteArrayInputStream(sink
+                    .toByteArray()), entityId);
 
         } catch (JAXBException e) {
             throw new RepositoryException(e);
         }
 
+    }
 
+    public void updateMetadata(final Session session, final String path, final InputStream src)
+            throws RepositoryException {
+        String[] ids = path.split("/");
+        final String entityId = ids[0];
+        final String metadataName = ids[ids.length - 1];
+        switch (ids.length) {
+            case 2:
+                /* it's entity metadata */
+                updateEntityMetadata(session, entityId, metadataName, src);
+                break;
+            case 3:
+                /* it's rep metadata */
+                updateRepresentationMetadata(session, entityId, ids[1], metadataName,
+                        src);
+                break;
+            case 4:
+                /* it's file metadata */
+                updateFileMetadata(session, entityId, ids[1], ids[2], metadataName, src);
+                break;
+            case 5:
+                /* it's bitstream metadata */
+                updateBitStreamMetadata(session, entityId, ids[1], ids[2], ids[3],
+                        metadataName, src);
+                break;
+            default:
+                throw new RepositoryException(
+                        "Unable to parse path for metadata update");
+        }
+    }
+
+    private void
+            updateBitStreamMetadata(Session session, String entityId, String string,
+                    String string2, String string3, String metadataName,
+                    InputStream src) {
+
+    }
+
+    private void updateFileMetadata(Session session, String entityId, String string,
+            String string2, String metadataName, InputStream src) {
+        // TODO Auto-generated method stub
+
+    }
+
+    private void updateRepresentationMetadata(Session session, String entityId, String string,
+            String metadataName, InputStream src) {
+        // TODO Auto-generated method stub
+
+    }
+
+    private void updateEntityMetadata(Session session, String entityId, String metadataName,
+            InputStream src) throws RepositoryException{
+        try {
+            final IntellectualEntity orig = this.fetchEntity(session, entityId);
+            if (!metadataName.equals("DESCRIPTIVE")){
+                throw new RepositoryException("Unknown metadata type " +metadataName);
+            }
+            final Object desc = this.marshaller.deserialize(src);
+            final IntellectualEntity ieUpdate =
+                    new IntellectualEntity.Builder(orig)
+                .descriptive(desc)
+                .build();
+
+            final ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            this.marshaller.serialize(ieUpdate, sink);
+            this.updateEntity(session, new ByteArrayInputStream(sink
+                    .toByteArray()), entityId);
+
+        } catch (JAXBException e) {
+            throw new RepositoryException(e);
+        }
     }
 
     private String getFirstLiteralString(Model model, Resource subject,
@@ -919,6 +992,5 @@ public class ConnectorService {
         }
         return uris;
     }
-
 
 }

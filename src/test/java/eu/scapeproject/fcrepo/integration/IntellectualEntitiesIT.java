@@ -446,6 +446,39 @@ public class IntellectualEntitiesIT {
 
     }
 
+    @Test
+    public void testIngestAndUpdateEntityMetadata() throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-19");
+        this.postEntity(ie1);
+
+        org.purl.dc.elements._1.ObjectFactory dcFac =
+                new org.purl.dc.elements._1.ObjectFactory();
+        ElementContainer cnt = dcFac.createElementContainer();
+        SimpleLiteral lit_title = new SimpleLiteral();
+        lit_title.getContent().add("DC metadata updated");
+        cnt.getAny().add(dcFac.createTitle(lit_title));
+
+        HttpPut put = new HttpPut(SCAPE_URL + "/metadata/entity-19/DESCRIPTIVE");
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(cnt, sink);
+
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        HttpResponse resp = this.client.execute(put);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        put.releaseConnection();
+
+        /* fetch the entity and check that the title has been updated */
+        HttpGet get =new HttpGet(SCAPE_URL + "/metadata/entity-19/DESCRIPTIVE");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        ElementContainer fetched =
+                (ElementContainer) this.marshaller.deserialize(resp
+                .getEntity().getContent());
+        assertEquals("DC metadata updated", fetched.getAny().get(0).getValue().getContent().get(0));
+        get.releaseConnection();
+
+    }
+
     private void postEntity(IntellectualEntity ie) throws IOException {
         HttpPost post = new HttpPost(SCAPE_URL + "/entity");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
