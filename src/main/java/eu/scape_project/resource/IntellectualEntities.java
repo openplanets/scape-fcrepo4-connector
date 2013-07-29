@@ -83,7 +83,37 @@ public class IntellectualEntities {
             public void write(OutputStream output) throws IOException,
                     WebApplicationException {
                 try {
-                    IntellectualEntities.this.marshaller.serialize(ie, output, refs);
+                    IntellectualEntities.this.marshaller.serialize(ie, output,
+                            refs);
+                } catch (JAXBException e) {
+                    throw new IOException(e);
+                }
+
+            }
+        }).build();
+
+    }
+
+    @GET
+    @Produces(MediaType.TEXT_XML)
+    @Path("{id}/{versionNumber}")
+    public Response retrieveEntity(@PathParam("id")
+    final String id, @PathParam("versionNumber") final Integer versionNumber, @QueryParam("useReferences")
+    @DefaultValue("no")
+    final String useReferences) throws RepositoryException {
+
+        final boolean refs = useReferences.equalsIgnoreCase("yes");
+        final IntellectualEntity ie =
+                connectorService.fetchEntity(this.session, id, versionNumber);
+        /* create a streaming METS response using the ScapeMarshaller */
+        return Response.ok(new StreamingOutput() {
+
+            @Override
+            public void write(OutputStream output) throws IOException,
+                    WebApplicationException {
+                try {
+                    IntellectualEntities.this.marshaller.serialize(ie, output,
+                            refs);
                 } catch (JAXBException e) {
                     throw new IOException(e);
                 }
@@ -97,8 +127,7 @@ public class IntellectualEntities {
     @Path("{id}")
     @Consumes({MediaType.TEXT_XML})
     public Response updateEntity(@PathParam("id")
-    final String entityId, final InputStream src)
-            throws RepositoryException {
+    final String entityId, final InputStream src) throws RepositoryException {
         connectorService.updateEntity(this.session, src, entityId);
         return Response.ok().build();
     }

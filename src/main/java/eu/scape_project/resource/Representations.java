@@ -5,11 +5,13 @@
 package eu.scape_project.resource;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.WebApplicationException;
@@ -62,5 +64,12 @@ public class Representations {
                 }
             }
         }).build();
+    }
+
+    @PUT
+    @Path("{entity-id}/{rep-id}")
+    public Response updateRepresentation(@PathParam("entity-id") final String entityId, @PathParam("rep-id") final String representationId, final InputStream src) throws RepositoryException{
+        this.connectorService.updateRepresentation(session, entityId, representationId, src);
+        return Response.ok().build();
     }
 }

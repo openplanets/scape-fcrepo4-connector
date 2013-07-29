@@ -8,6 +8,8 @@ import info.lc.xmlns.premis_v2.PremisComplexType;
 import info.lc.xmlns.premis_v2.RightsComplexType;
 import info.lc.xmlns.textmd_v3.TextMD;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -113,9 +115,15 @@ public class ConnectorService {
         }
     }
 
-    public IntellectualEntity
-            fetchEntity(final Session session, final String id)
-                    throws RepositoryException {
+    public IntellectualEntity fetchEntity(final Session session,
+            final String id)
+            throws RepositoryException {
+        return fetchEntity(session, id, null);
+    }
+
+    public IntellectualEntity fetchEntity(final Session session,
+            final String id, final Integer versionNumber)
+            throws RepositoryException {
 
         final IntellectualEntity.Builder ie = new IntellectualEntity.Builder();
         ie.identifier(new Identifier(id));
@@ -126,9 +134,13 @@ public class ConnectorService {
         final Model entityModel =
                 SerializationUtils.unifyDatasetModel(ieObject
                         .getPropertiesDataset());
-
-        final String versionPath =
-                getCurrentVersionPath(entityModel, entityPath);
+        String versionPath;
+        if (versionNumber != null){
+            versionPath = entityPath + "/version-" + versionNumber;
+        }else{
+            versionPath =
+                    getCurrentVersionPath(entityModel, entityPath);
+        }
 
         final FedoraObject versionObject =
                 this.objectService.getObject(session, versionPath);
@@ -142,7 +154,6 @@ public class ConnectorService {
         /* find all the representations of this entity */
         final Resource versionResource =
                 versionModel.createResource("info:fedora" + versionPath);
-        versionModel.write(System.out);
         final List<Representation> reps = new ArrayList<>();
         for (String repUri : getLiteralStrings(versionModel, versionResource,
                 "http://scapeproject.eu/model#hasRepresentation")) {
@@ -389,7 +400,8 @@ public class ConnectorService {
                     entityPath +
                     "> <http://scapeproject.eu/model#hasVersion> \"info:fedora/" +
                     versionPath + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" + entityPath +
+            sparql.append("INSERT {<info:fedora/" +
+                    entityPath +
                     "> <http://scapeproject.eu/model#currentVersion>  \"info:fedora/" +
                     versionPath + "\"} WHERE {};");
 
@@ -632,7 +644,9 @@ public class ConnectorService {
                 getCurrentVersionPath(
                         SerializationUtils.unifyDatasetModel(entityObject
                                 .getPropertiesDataset()), entityPath);
-        int versionNumber = Integer.parseInt(oldVersionPath.substring(oldVersionPath.lastIndexOf('-') + 1)) + 1;
+        int versionNumber =
+                Integer.parseInt(oldVersionPath.substring(oldVersionPath
+                        .lastIndexOf('-') + 1)) + 1;
         final String newVersionPath = entityPath + "/version-" + versionNumber;
 
         try {
@@ -654,17 +668,17 @@ public class ConnectorService {
 
             sparql.append("DELETE {<info:fedora" +
                     entityPath +
-                    "> <http://scapeproject.eu/model#currentVersion> \"info:fedora"+
+                    "> <http://scapeproject.eu/model#currentVersion> \"info:fedora" +
                     oldVersionPath + "\"} WHERE {};");
             sparql.append("INSERT {<info:fedora" +
                     entityPath +
                     "> <http://scapeproject.eu/model#hasVersion> \"info:fedora" +
                     newVersionPath + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora" + entityPath +
+            sparql.append("INSERT {<info:fedora" +
+                    entityPath +
                     "> <http://scapeproject.eu/model#currentVersion>  \"info:fedora" +
                     newVersionPath + "\"} WHERE {};");
 
-            System.out.println("UPDATE: " + sparql.toString());
             /* update the object and it's child's using sparql */
             entityObject.updatePropertiesDataset(sparql.toString());
 
@@ -675,6 +689,34 @@ public class ConnectorService {
             LOG.error(e.getLocalizedMessage(), e);
             throw new RepositoryException(e);
         }
+
+    }
+
+    public void updateRepresentation(Session session, String entityId,
+            String repId, InputStream src) throws RepositoryException{
+        try {
+            final Representation rep = (Representation) this.marshaller.deserialize(src);
+            final List<Representation> representations = new ArrayList<>();
+            final IntellectualEntity orig = this.fetchEntity(session, entityId);
+            for (Representation r: orig.getRepresentations()){
+                if (!r.getIdentifier().getValue().equals(repId)){
+                    representations.add(r);
+                }
+            }
+            representations.add(rep);
+
+            final IntellectualEntity ieUpdate = new IntellectualEntity.Builder(orig)
+                .representations(representations)
+                .build();
+
+            final ByteArrayOutputStream sink = new ByteArrayOutputStream();
+            this.marshaller.serialize(ieUpdate, sink);
+            this.updateEntity(session, new ByteArrayInputStream(sink.toByteArray()), entityId);
+
+        } catch (JAXBException e) {
+            throw new RepositoryException(e);
+        }
+
 
     }
 
@@ -825,7 +867,6 @@ public class ConnectorService {
             final List<String> paths) throws RepositoryException {
         List<IntellectualEntity> entities = new ArrayList<>();
         for (String path : paths) {
-            System.out.println(path);
             path = path.substring(path.indexOf("/scape/entity") + 14);
             entities.add(this.fetchEntity(session, path));
         }
@@ -878,5 +919,6 @@ public class ConnectorService {
         }
         return uris;
     }
+
 
 }

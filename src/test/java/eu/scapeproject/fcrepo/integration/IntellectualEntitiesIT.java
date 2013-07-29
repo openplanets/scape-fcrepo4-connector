@@ -24,7 +24,6 @@ import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
-import org.apache.jena.riot.RDFDataMgr;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,9 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
 
 import eu.scapeproject.model.BitStream;
 import eu.scapeproject.model.File;
@@ -376,7 +372,7 @@ public class IntellectualEntitiesIT {
             .descriptive(cnt)
             .build();
 
-        /* search via SRU */
+        /* update the current object */
         HttpPut put = new HttpPut(SCAPE_URL + "/entity/entity-17");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(ie2, sink);
@@ -396,11 +392,57 @@ public class IntellectualEntitiesIT {
         ElementContainer dc = (ElementContainer) fetched.getDescriptive();
         assertEquals("Object Updated",dc.getAny().get(0).getValue().getContent().get(0));
 
-        /* check that the model has 2 versions in fedora */
-        final Model model = ModelFactory.createDefaultModel();
-        RDFDataMgr.read(model,FEDORA_URL + "/objects/scape/entities/entity-17");
-        model.write(System.out);
-//        StmtIterator it = model.listStatements(model.createResource("<info))
+        /* check that the old version is returned when specifically asked for*/
+        get = new HttpGet(SCAPE_URL + "/entity/entity-17/1");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        fetched = this.marshaller.deserialize(IntellectualEntity.class, resp.getEntity().getContent());
+        get.releaseConnection();
+        assertNotNull(fetched.getDescriptive());
+        assertEquals(ElementContainer.class, fetched.getDescriptive().getClass());
+        dc = (ElementContainer) fetched.getDescriptive();
+        assertEquals("Object 1",dc.getAny().get(0).getValue().getContent().get(0));
+
+        /* check that the new version is returned when specifically asked for*/
+        get = new HttpGet(SCAPE_URL + "/entity/entity-17/2");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        fetched = this.marshaller.deserialize(IntellectualEntity.class, resp.getEntity().getContent());
+        get.releaseConnection();
+        assertNotNull(fetched.getDescriptive());
+        assertEquals(ElementContainer.class, fetched.getDescriptive().getClass());
+        dc = (ElementContainer) fetched.getDescriptive();
+        assertEquals("Object Updated",dc.getAny().get(0).getValue().getContent().get(0));
+    }
+
+    @Test
+    public void testIngestAndUpdateRepresentation() throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-18");
+        this.postEntity(ie1);
+
+        Representation r = new Representation.Builder(ie1.getRepresentations().get(0))
+            .title("title update")
+            .build();
+
+        HttpPut put = new HttpPut(SCAPE_URL + "/representation/entity-18/" + r.getIdentifier().getValue());
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(r, sink);
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        HttpResponse resp = this.client.execute(put);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        put.releaseConnection();
+
+        /* fetch the representation and check that the title has been updated */
+        HttpGet get =new HttpGet(SCAPE_URL + "/representation/entity-18/" +  r.getIdentifier().getValue());
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        Representation fetched =
+                this.marshaller.deserialize(Representation.class, resp
+                        .getEntity().getContent());
+        assertEquals(r.getIdentifier().getValue(), fetched.getIdentifier()
+                .getValue());
+        assertEquals("title update", r.getTitle());
+        get.releaseConnection();
 
     }
 
@@ -420,4 +462,6 @@ public class IntellectualEntitiesIT {
         assertTrue(id.length() > 0);
         post.releaseConnection();
     }
+
+
 }
