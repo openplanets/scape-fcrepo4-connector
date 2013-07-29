@@ -10,9 +10,11 @@ import java.io.OutputStream;
 
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -90,4 +92,15 @@ public class IntellectualEntities {
         }).build();
 
     }
+
+    @PUT
+    @Path("{id}")
+    @Consumes({MediaType.TEXT_XML})
+    public Response updateEntity(@PathParam("id")
+    final String entityId, final InputStream src)
+            throws RepositoryException {
+        connectorService.updateEntity(this.session, src, entityId);
+        return Response.ok().build();
+    }
+
 }

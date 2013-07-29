@@ -17,6 +17,7 @@ import javax.xml.bind.JAXBException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
@@ -331,6 +332,22 @@ public class IntellectualEntitiesIT {
         assertTrue(xml.indexOf("<scape:identifier type=\"String\"><scape:value>file-1</scape:value></scape:identifier>") > 0);
         get.releaseConnection();
 
+    }
+
+    @Test
+    public void testIngestAndUpdateIntellectualEntity() throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-17");
+        this.postEntity(ie1);
+
+
+        /* search via SRU */
+        HttpPut put = new HttpPut(SCAPE_URL + "/entity/entity-17");
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(ie1, sink);
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        HttpResponse resp = this.client.execute(put);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        put.releaseConnection();
     }
 
     private void postEntity(IntellectualEntity ie) throws IOException {

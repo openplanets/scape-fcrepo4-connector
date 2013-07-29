@@ -534,6 +534,15 @@ public class ConnectorService {
         return sparql.toString();
     }
 
+    public void updateEntity(final Session session, final InputStream src, final String entityId) throws RepositoryException{
+        /* delete the old  entity */
+        this.nodeService.deleteObject(session, "/" + ENTITY_FOLDER + "/" + entityId);
+        session.save();
+        /* add the updated entity */
+        addEntity(session, src);
+        session.save();
+    }
+
     private String getFirstLiteralString(Model model, Resource subject,
             String propertyName) {
 
@@ -734,5 +743,6 @@ public class ConnectorService {
         }
         return uris;
     }
+
 
 }
