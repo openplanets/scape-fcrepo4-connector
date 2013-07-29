@@ -44,6 +44,7 @@ import eu.scapeproject.model.LifecycleState;
 import eu.scapeproject.model.LifecycleState.State;
 import eu.scapeproject.model.Representation;
 import eu.scapeproject.model.TestUtil;
+import eu.scapeproject.model.VersionList;
 import eu.scapeproject.util.ScapeMarshaller;
 
 /**
@@ -560,6 +561,30 @@ public class IntellectualEntitiesIT {
         assertEquals(200, resp.getStatusLine().getStatusCode());
         Object fetched =  this.marshaller.deserialize(resp.getEntity().getContent());
         assertEquals(Mix.class, fetched.getClass());
+        get.releaseConnection();
+
+    }
+
+    @Test
+    public void testIngestAndFetchVersionList() throws Exception {
+        IntellectualEntity ie1 = TestUtil.createTestEntity("entity-23");
+        this.postEntity(ie1);
+
+        HttpPut put = new HttpPut(SCAPE_URL + "/metadata/entity-23/representation-1/file-1/bitstream-1/TECHNICAL");
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        this.marshaller.serialize(TestUtil.createMIXRecord(), sink);
+
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        HttpResponse resp = this.client.execute(put);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        put.releaseConnection();
+
+        /* fetch the entity and check that the title has been updated */
+        HttpGet get =new HttpGet(SCAPE_URL + "/entity-version-list/entity-23");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        VersionList fetched =  (VersionList) this.marshaller.deserialize(resp.getEntity().getContent());
+        assertEquals(2, fetched.getVersionIdentifiers().size());
         get.releaseConnection();
 
     }

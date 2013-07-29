@@ -69,6 +69,7 @@ import eu.scapeproject.model.IntellectualEntityCollection;
 import eu.scapeproject.model.LifecycleState;
 import eu.scapeproject.model.LifecycleState.State;
 import eu.scapeproject.model.Representation;
+import eu.scapeproject.model.VersionList;
 import eu.scapeproject.util.ScapeMarshaller;
 import gov.loc.audiomd.AudioType;
 import gov.loc.marc21.slim.RecordType;
@@ -339,6 +340,16 @@ public class ConnectorService {
                         repId;
         return this.fetchRepresentation(session, repPath);
     }
+
+    public VersionList fetchVersionList(final Session session, final String entityId) throws RepositoryException{
+        final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
+        final FedoraObject entityObject =
+                this.objectService.getObject(session, entityPath);
+        final Model model = SerializationUtils.unifyDatasetModel(entityObject.getPropertiesDataset());
+        final Resource subject = model.createResource("info:fedora" + entityPath);
+        return new VersionList(entityId, getLiteralStrings(model, subject, "http://scapeproject.eu/model#hasVersion"));
+    }
+
 
     public String addEntity(final Session session, final InputStream src)
             throws RepositoryException {
@@ -1132,5 +1143,4 @@ public class ConnectorService {
         }
         return uris;
     }
-
 }
