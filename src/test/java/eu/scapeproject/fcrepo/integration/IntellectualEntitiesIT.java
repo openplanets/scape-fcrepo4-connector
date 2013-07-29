@@ -5,6 +5,7 @@
 package eu.scapeproject.fcrepo.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import info.lc.xmlns.textmd_v3.TextMD;
 
@@ -23,14 +24,19 @@ import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
+import org.apache.jena.riot.RDFDataMgr;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.purl.dc.elements._1.ElementContainer;
+import org.purl.dc.elements._1.SimpleLiteral;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
 
 import eu.scapeproject.model.BitStream;
 import eu.scapeproject.model.File;
@@ -96,6 +102,25 @@ public class IntellectualEntitiesIT {
                 .getState());
         assertEquals(ie.getRepresentations().size(), fetched
                 .getRepresentations().size());
+        assertNotNull(ie.getDescriptive());
+        assertEquals(ElementContainer.class, ie.getDescriptive().getClass());
+
+        for (Representation r: fetched.getRepresentations()){
+            assertTrue(r.getFiles().size() > 0);
+            assertNotNull(r.getTechnical());
+            assertNotNull(r.getProvenance());
+            assertNotNull(r.getRights());
+            assertNotNull(r.getSource());
+
+            for (File f: r.getFiles()){
+                assertNotNull(f.getBitStreams());
+                assertTrue(f.getBitStreams().size() > 0);
+                assertNotNull(f.getTechnical());
+                for (BitStream bs: f.getBitStreams()){
+                    assertNotNull(bs.getTechnical());
+                }
+            }
+        }
         get.releaseConnection();
     }
 
@@ -339,15 +364,44 @@ public class IntellectualEntitiesIT {
         IntellectualEntity ie1 = TestUtil.createTestEntity("entity-17");
         this.postEntity(ie1);
 
+        org.purl.dc.elements._1.ObjectFactory dcFac =
+                new org.purl.dc.elements._1.ObjectFactory();
+        ElementContainer cnt = dcFac.createElementContainer();
+        SimpleLiteral lit_title = new SimpleLiteral();
+        lit_title.getContent().add("Object Updated");
+        cnt.getAny().add(dcFac.createTitle(lit_title));
+
+
+        IntellectualEntity ie2 = new IntellectualEntity.Builder(ie1)
+            .descriptive(cnt)
+            .build();
 
         /* search via SRU */
         HttpPut put = new HttpPut(SCAPE_URL + "/entity/entity-17");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
-        this.marshaller.serialize(ie1, sink);
+        this.marshaller.serialize(ie2, sink);
         put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
         HttpResponse resp = this.client.execute(put);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         put.releaseConnection();
+
+        /* check that the new version is returned */
+        HttpGet get = new HttpGet(SCAPE_URL + "/entity/entity-17");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        IntellectualEntity fetched = this.marshaller.deserialize(IntellectualEntity.class, resp.getEntity().getContent());
+        get.releaseConnection();
+        assertNotNull(fetched.getDescriptive());
+        assertEquals(ElementContainer.class, fetched.getDescriptive().getClass());
+        ElementContainer dc = (ElementContainer) fetched.getDescriptive();
+        assertEquals("Object Updated",dc.getAny().get(0).getValue().getContent().get(0));
+
+        /* check that the model has 2 versions in fedora */
+        final Model model = ModelFactory.createDefaultModel();
+        RDFDataMgr.read(model,FEDORA_URL + "/objects/scape/entities/entity-17");
+        model.write(System.out);
+//        StmtIterator it = model.listStatements(model.createResource("<info))
+
     }
 
     private void postEntity(IntellectualEntity ie) throws IOException {

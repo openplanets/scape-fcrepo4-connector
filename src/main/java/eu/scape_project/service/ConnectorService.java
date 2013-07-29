@@ -123,36 +123,54 @@ public class ConnectorService {
         final String entityPath = "/" + ENTITY_FOLDER + "/" + id;
         final FedoraObject ieObject =
                 this.objectService.getObject(session, entityPath);
-
-        /* fetch the ie's metadata form the repo */
-        ie.descriptive(fetchMetadata(session, entityPath + "/DESCRIPTIVE"));
-
-        /* fetch the representations */
         final Model entityModel =
                 SerializationUtils.unifyDatasetModel(ieObject
                         .getPropertiesDataset());
 
+        final String versionPath =
+                getCurrentVersionPath(entityModel, entityPath);
+
+        final FedoraObject versionObject =
+                this.objectService.getObject(session, versionPath);
+        final Model versionModel =
+                SerializationUtils.unifyDatasetModel(versionObject
+                        .getPropertiesDataset());
+
+        /* fetch the ie's metadata form the repo */
+        ie.descriptive(fetchMetadata(session, versionPath + "/DESCRIPTIVE"));
+
         /* find all the representations of this entity */
-        final Resource parent =
-                entityModel.createResource("info:fedora" + ieObject.getPath());
+        final Resource versionResource =
+                versionModel.createResource("info:fedora" + versionPath);
+        versionModel.write(System.out);
         final List<Representation> reps = new ArrayList<>();
-        for (String repUri : getLiteralStrings(entityModel, parent,
+        for (String repUri : getLiteralStrings(versionModel, versionResource,
                 "http://scapeproject.eu/model#hasRepresentation")) {
             reps.add(fetchRepresentation(session, repUri.substring(11)));
         }
         ie.representations(reps);
 
         /* fetch the lifecycle state */
+        final Resource entityResource =
+                versionModel.createResource("info:fedora" + entityPath);
         final String state =
-                getFirstLiteralString(entityModel, parent,
+                getFirstLiteralString(entityModel, entityResource,
                         "http://scapeproject.eu/model#hasLifeCycleState");
         final String details =
-                getFirstLiteralString(entityModel, parent,
+                getFirstLiteralString(entityModel, entityResource,
                         "http://scapeproject.eu/model#hasLifeCycleStateDetails");
         ie.lifecycleState(new LifecycleState(details, LifecycleState.State
                 .valueOf(state)));
 
         return ie.build();
+    }
+
+    private String getCurrentVersionPath(Model entityModel, String entityPath)
+            throws RepositoryException {
+        final Resource parent =
+                entityModel.createResource("info:fedora" + entityPath);
+        return getFirstLiteralString(entityModel, parent,
+                "http://scapeproject.eu/model#currentVersion").substring(11);
     }
 
     public BitStream fetchBitStream(final Session session, final String bsUri)
@@ -164,9 +182,22 @@ public class ConnectorService {
         return bs.build();
     }
 
-    public ContentTypeInputStream fetchBinaryFile(final Session session, final String fileUri)
+    public ContentTypeInputStream fetchBinaryFile(final Session session,
+            final String entityId, final String repId, final String fileId)
             throws RepositoryException {
-        final Datastream ds = this.datastreamService.getDatastream(session, fileUri + "/DATA");
+
+        final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
+        final FedoraObject fo =
+                this.objectService.getObject(session, entityPath);
+        final Model entityModel =
+                SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset());
+        final String dsPath =
+                this.getCurrentVersionPath(entityModel, entityPath) + "/" +
+                        repId + "/" + fileId + "/DATA";
+
+        final Datastream ds =
+                this.datastreamService.getDatastream(session, dsPath);
+
         return new ContentTypeInputStream(ds.getMimeType(), ds.getContent());
     }
 
@@ -202,9 +233,40 @@ public class ConnectorService {
         return f.build();
     }
 
+    public Object
+            fetchCurrentMetadata(final Session session, final String path)
+                    throws RepositoryException {
+
+        String[] ids = path.substring(ENTITY_FOLDER.length() + 2).split("/");
+        String entityPath = "/" + ENTITY_FOLDER + "/" + ids[0];
+        final FedoraObject entityObject =
+                objectService.createObject(session, entityPath);
+
+        StringBuilder versionPath = new StringBuilder();
+        versionPath.append(this.getCurrentVersionPath(SerializationUtils
+                .unifyDatasetModel(entityObject.getPropertiesDataset()),
+                entityPath));
+        for (int i = 1; i < ids.length; i++) {
+            versionPath.append("/");
+            versionPath.append(ids[i]);
+        }
+
+        try {
+            if (!this.datastreamService.exists(session, versionPath.toString())) {
+                return null;
+            }
+            final Datastream mdDs =
+                    this.datastreamService.getDatastream(session, versionPath
+                            .toString());
+            return this.marshaller.deserialize(mdDs.getContent());
+        } catch (JAXBException e) {
+            throw new RepositoryException(e);
+        }
+    }
 
     public Object fetchMetadata(final Session session, final String path)
             throws RepositoryException {
+
         try {
             if (!this.datastreamService.exists(session, path)) {
                 return null;
@@ -218,10 +280,10 @@ public class ConnectorService {
     }
 
     public Representation fetchRepresentation(final Session session,
-            final String repUri) throws RepositoryException {
+            final String repPath) throws RepositoryException {
         final Representation.Builder rep = new Representation.Builder();
         final FedoraObject repObject =
-                this.objectService.getObject(session, repUri);
+                this.objectService.getObject(session, repPath);
         final Model repModel =
                 SerializationUtils.unifyDatasetModel(repObject
                         .getPropertiesDataset());
@@ -229,8 +291,8 @@ public class ConnectorService {
                 repModel.createResource("info:fedora" + repObject.getPath());
 
         /* find the title and id */
-        rep.identifier(new Identifier(repUri
-                .substring(repUri.lastIndexOf('/') + 1)));
+        rep.identifier(new Identifier(repPath.substring(repPath
+                .lastIndexOf('/') + 1)));
         rep.title(getFirstLiteralString(repModel, parent,
                 "http://scapeproject.eu/model#hasTitle"));
 
@@ -250,6 +312,20 @@ public class ConnectorService {
 
         rep.files(files);
         return rep.build();
+    }
+
+    public Representation fetchRepresentation(final Session session,
+            final String entityId, String repId) throws RepositoryException {
+
+        final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
+        final FedoraObject fo =
+                this.objectService.getObject(session, entityPath);
+        final Model entityModel =
+                SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset());
+        final String repPath =
+                this.getCurrentVersionPath(entityModel, entityPath) + "/" +
+                        repId;
+        return this.fetchRepresentation(session, repPath);
     }
 
     public String addEntity(final Session session, final InputStream src)
@@ -274,8 +350,9 @@ public class ConnectorService {
                 }
 
             }
-            /* create the entity top level object in fcrepo */
+            /* create the entity top level object in fcrepo as a first version */
             final String entityPath = ENTITY_FOLDER + "/" + entityId;
+            final String versionPath = entityPath + "/version-1";
 
             if (this.objectService.exists(session, "/" + entityPath)) {
                 /* return a 409: Conflict result */
@@ -287,24 +364,34 @@ public class ConnectorService {
                     objectService.createObject(session, entityPath);
             entityObject.getNode().addMixin("scape:intellectual-entity");
 
+            final FedoraObject versionObject =
+                    objectService.createObject(session, versionPath);
+
             /* add the metadata datastream for descriptive metadata */
-            sparql.append(addMetadata(session, ie.getDescriptive(), entityPath +
-                    "/DESCRIPTIVE"));
+            sparql.append(addMetadata(session, ie.getDescriptive(),
+                    versionPath + "/DESCRIPTIVE"));
 
             /* add all the representations */
             sparql.append(addRepresentations(session, ie.getRepresentations(),
-                    entityPath));
+                    versionPath));
 
             /* update the intellectual entity's properties */
-            sparql.append("INSERT {<info:fedora/" + entityObject.getPath() +
+            sparql.append("INSERT {<info:fedora/" + entityPath +
                     "> <http://scapeproject.eu/model#hasLifeCycleState> \"" +
                     LifecycleState.State.INGESTED + "\"} WHERE {};");
             sparql.append("INSERT {<info:fedora/" +
-                    entityObject.getPath() +
+                    entityPath +
                     "> <http://scapeproject.eu/model#hasLifeCycleStateDetails> \"successfully ingested at " +
                     new Date().getTime() + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" + entityObject.getPath() +
+            sparql.append("INSERT {<info:fedora/" + entityPath +
                     "> <http://scapeproject.eu/model#hasType> \"intellectualentity\"} WHERE {};");
+            sparql.append("INSERT {<info:fedora/" +
+                    entityPath +
+                    "> <http://scapeproject.eu/model#hasVersion> \"info:fedora/" +
+                    versionPath + "\"} WHERE {};");
+            sparql.append("INSERT {<info:fedora/" + entityPath +
+                    "> <http://scapeproject.eu/model#currentVersion>  \"info:fedora/" +
+                    versionPath + "\"} WHERE {};");
 
             /* update the object and it's child's using sparql */
             entityObject.updatePropertiesDataset(sparql.toString());
@@ -380,7 +467,8 @@ public class ConnectorService {
                         "/TECHNICAL"));
 
                 /* add all bitstreams as child objects */
-                sparql.append(addBitStreams(session, f.getBitStreams(), repPath));
+                sparql.append(addBitStreams(session, f.getBitStreams(),
+                        filePath));
 
                 sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
                         "> <http://scapeproject.eu/model#hasType> \"file\"} WHERE {};");
@@ -494,14 +582,14 @@ public class ConnectorService {
     private String
             addRepresentations(final Session session,
                     final List<Representation> representations,
-                    final String entityPath) throws RepositoryException {
+                    final String versionPath) throws RepositoryException {
         final StringBuilder sparql = new StringBuilder();
         for (Representation rep : representations) {
 
             final String repId =
                     (rep.getIdentifier() != null) ? rep.getIdentifier()
                             .getValue() : UUID.randomUUID().toString();
-            final String repPath = entityPath + "/" + repId;
+            final String repPath = versionPath + "/" + repId;
             final FedoraObject repObject =
                     objectService.createObject(session, repPath);
             repObject.getNode().addMixin("scape:representation");
@@ -520,27 +608,74 @@ public class ConnectorService {
             sparql.append(addFiles(session, rep.getFiles(), repPath));
 
             /* add a sparql query to set the type of this object */
-            sparql.append("INSERT {<info:fedora/" + repObject.getPath() +
+            sparql.append("INSERT {<info:fedora" + repObject.getPath() +
                     "> <http://scapeproject.eu/model#hasType> \"representation\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" + repObject.getPath() +
+            sparql.append("INSERT {<info:fedora" + repObject.getPath() +
                     "> <http://scapeproject.eu/model#hasTitle> \"" +
                     rep.getTitle() + "\"} WHERE {};");
             sparql.append("INSERT {<info:fedora/" +
-                    entityPath +
-                    "> <http://scapeproject.eu/model#hasRepresentation> <info:fedora/" +
+                    versionPath +
+                    "> <http://scapeproject.eu/model#hasRepresentation> <info:fedora" +
                     repObject.getPath() + ">} WHERE {};");
 
         }
         return sparql.toString();
     }
 
-    public void updateEntity(final Session session, final InputStream src, final String entityId) throws RepositoryException{
-        /* delete the old  entity */
-        this.nodeService.deleteObject(session, "/" + ENTITY_FOLDER + "/" + entityId);
-        session.save();
-        /* add the updated entity */
-        addEntity(session, src);
-        session.save();
+    public void updateEntity(final Session session, final InputStream src,
+            final String entityId) throws RepositoryException {
+        final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
+        final FedoraObject entityObject =
+                this.objectService.getObject(session, entityPath);
+        /* fetch the current version number from the repo */
+        final String oldVersionPath =
+                getCurrentVersionPath(
+                        SerializationUtils.unifyDatasetModel(entityObject
+                                .getPropertiesDataset()), entityPath);
+        int versionNumber = Integer.parseInt(oldVersionPath.substring(oldVersionPath.lastIndexOf('-') + 1)) + 1;
+        final String newVersionPath = entityPath + "/version-" + versionNumber;
+
+        try {
+            /* read the post body into an IntellectualEntity object */
+            final IntellectualEntity ie =
+                    this.marshaller.deserialize(IntellectualEntity.class, src);
+            final StringBuilder sparql = new StringBuilder();
+
+            final FedoraObject versionObject =
+                    objectService.createObject(session, newVersionPath);
+
+            /* add the metadata datastream for descriptive metadata */
+            sparql.append(addMetadata(session, ie.getDescriptive(),
+                    newVersionPath + "/DESCRIPTIVE"));
+
+            /* add all the representations */
+            sparql.append(addRepresentations(session, ie.getRepresentations(),
+                    newVersionPath));
+
+            sparql.append("DELETE {<info:fedora" +
+                    entityPath +
+                    "> <http://scapeproject.eu/model#currentVersion> \"info:fedora"+
+                    oldVersionPath + "\"} WHERE {};");
+            sparql.append("INSERT {<info:fedora" +
+                    entityPath +
+                    "> <http://scapeproject.eu/model#hasVersion> \"info:fedora" +
+                    newVersionPath + "\"} WHERE {};");
+            sparql.append("INSERT {<info:fedora" + entityPath +
+                    "> <http://scapeproject.eu/model#currentVersion>  \"info:fedora" +
+                    newVersionPath + "\"} WHERE {};");
+
+            System.out.println("UPDATE: " + sparql.toString());
+            /* update the object and it's child's using sparql */
+            entityObject.updatePropertiesDataset(sparql.toString());
+
+            /* save the changes made to the objects */
+            session.save();
+
+        } catch (JAXBException e) {
+            LOG.error(e.getLocalizedMessage(), e);
+            throw new RepositoryException(e);
+        }
+
     }
 
     private String getFirstLiteralString(Model model, Resource subject,
@@ -743,6 +878,5 @@ public class ConnectorService {
         }
         return uris;
     }
-
 
 }

@@ -45,10 +45,10 @@ public class Metadata {
 
     @GET
     @Path("{path: .*}")
-    public Response retrieveFile(@PathParam("path")
+    public Response retrieveMetadata(@PathParam("path")
     String path) throws RepositoryException {
         path = "/" + ConnectorService.ENTITY_FOLDER + "/" + path;
-        final Object md = connectorService.fetchMetadata(this.session, path);
+        final Object md = connectorService.fetchCurrentMetadata(this.session, path);
         return Response.ok().entity(new StreamingOutput() {
 
             @Override

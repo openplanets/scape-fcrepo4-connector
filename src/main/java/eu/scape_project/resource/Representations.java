@@ -46,13 +46,10 @@ public class Representations {
 
     @GET
     @Path("{entity-id}/{rep-id}")
-    public Response retrieveFile(@PathParam("entity-id")
+    public Response retrieveRepresentation(@PathParam("entity-id")
     final String entityId, @PathParam("rep-id")
     final String repId) throws RepositoryException {
-        final String path =
-                "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId + "/" +
-                        repId;
-        final Representation r = connectorService.fetchRepresentation(this.session, path);
+        final Representation r = connectorService.fetchRepresentation(this.session, entityId, repId);
         return Response.ok().entity(new StreamingOutput() {
 
             @Override

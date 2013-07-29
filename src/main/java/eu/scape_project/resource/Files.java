@@ -45,10 +45,7 @@ public class Files {
     final String entityId, @PathParam("rep-id")
     final String repId, @PathParam("file-id")
     final String fileId) throws RepositoryException {
-        final String path =
-                "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId + "/" +
-                        repId + "/" + fileId;
-        final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, path);
+        final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId);
         return Response.ok().entity(src).type(src.getContentType()).build();
     }
 }
