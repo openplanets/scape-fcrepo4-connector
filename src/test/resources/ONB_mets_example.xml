@@ -20,10 +20,7 @@
 <METS:dmdSec ID="DMDMARC" xmlns="http://www.loc.gov/MARC21/slim">
 <METS:mdWrap MIMETYPE="text/xml" MDTYPE="MARC" LABEL="Source MARC record">
 <METS:xmlData>
-<record xmlns="http://www.loc.gov/MARC21/slim"
-xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xsi:schemaLocation="http://www.loc.gov/MARC21/slim
-http://www.loc.gov/standards/marcxml/schema/MARC21slim.xsd">
+<record xmlns="http://www.loc.gov/MARC21/slim" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/MARC21/slim http://www.loc.gov/standards/marcxml/schema/MARC21slim.xsd">
   <leader>     nam  2200000 u 4500</leader>
   <controlfield tag="001">AC03009537</controlfield>
   <controlfield tag="008">000720s1749                  |||</controlfield>
