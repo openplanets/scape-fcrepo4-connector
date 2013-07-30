@@ -53,7 +53,7 @@ $ mvn clean install
 
 #### 4. Create the Connector API implmentation JAR
 
-Checkout and build/package the connector api implementation from https://github.com/openplanets/scape-fcrepo4-connector
+Checkout and build/package the Connector API implementation from https://github.com/openplanets/scape-fcrepo4-connector
 
 ```bash
 $ git clone https://github.com/openplanets/scape-fcrepo4-connector.git
@@ -63,7 +63,7 @@ $ mvn clean compile package
 
 #### 5. Install the JAR files
 
-Copy the required JAR files from platform data model and Plan Management API to the Fedora 4 Webapp
+Copy the required JAR files from the data model and the Connector API to the Fedora 4 Webapp
 
 ```bash
 $ cp scape-fcrepo4-connector/target/scape-fcrepo4-connector-{VERSION}.jar {TOMCAT_HOME}/webapps/fcrepo/WEB-INF/lib/
@@ -74,7 +74,7 @@ $ cp scape-platform-datamodel/target/scape-platform-datamodel-{VERSION}.jar {TOM
 
 Update the configuration of the web application in order to have Fedora 4 discover the new HTTP endpoints at /scape/plans
 
-*  Add "classpath:scape.xml" to the contextConfigLocation:
+*  Add "classpath:scape-connector.xml" to the contextConfigLocation:
 
 ```xml
 <context-param>
