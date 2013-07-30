@@ -1095,8 +1095,11 @@ public class ConnectorService {
         for (String item : getItemsFromQueue(session)) {
             final Datastream ds =
                     this.datastreamService.getDatastream(session, item);
-            addEntity(session, ds.getContent(), item.substring(QUEUE_NODE.length() + 1));
-            deleteFromQueue(session, item);
+            try{
+                addEntity(session, ds.getContent(), item.substring(QUEUE_NODE.length() + 1));
+            }finally{
+                deleteFromQueue(session, item);
+            }
         }
         session.logout();
     }
