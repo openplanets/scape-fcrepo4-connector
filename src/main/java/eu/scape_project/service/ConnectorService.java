@@ -10,8 +10,6 @@ import info.lc.xmlns.textmd_v3.TextMD;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
@@ -36,7 +34,6 @@ import javax.jcr.query.qom.QueryObjectModelFactory;
 import javax.jcr.query.qom.Source;
 import javax.xml.bind.JAXBException;
 
-import org.apache.commons.io.IOUtils;
 import org.fcrepo.Datastream;
 import org.fcrepo.FedoraObject;
 import org.fcrepo.exception.InvalidChecksumException;
@@ -197,23 +194,26 @@ public class ConnectorService {
     }
 
     public ContentTypeInputStream fetchBinaryFile(final Session session,
-            final String entityId, final String repId, final String fileId, final String versionId)
-            throws RepositoryException {
+            final String entityId, final String repId, final String fileId,
+            final String versionId) throws RepositoryException {
 
         final String entityPath, dsPath;
         if (versionId == null) {
-            entityPath= "/" + ENTITY_FOLDER + "/" + entityId;
+            entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
             final FedoraObject fo =
                     this.objectService.getObject(session, entityPath);
             final Model entityModel =
-                    SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset());
-            dsPath = this.getCurrentVersionPath(entityModel, entityPath) + "/" +
+                    SerializationUtils.unifyDatasetModel(fo
+                            .getPropertiesDataset());
+            dsPath =
+                    this.getCurrentVersionPath(entityModel, entityPath) + "/" +
                             repId + "/" + fileId + "/DATA";
-        }else{
-            entityPath= "/" + ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
+        } else {
+            entityPath =
+                    "/" + ENTITY_FOLDER + "/" + entityId + "/version-" +
+                            versionId;
             dsPath = entityPath + "/" + repId + "/" + fileId + "/DATA";
         }
-
 
         final Datastream ds =
                 this.datastreamService.getDatastream(session, dsPath);
@@ -337,33 +337,43 @@ public class ConnectorService {
     }
 
     public Representation fetchRepresentation(final Session session,
-            final String entityId, String repId, Integer versionId) throws RepositoryException {
+            final String entityId, String repId, Integer versionId)
+            throws RepositoryException {
 
         String entityPath, repPath;
-        if (versionId == null){
+        if (versionId == null) {
             entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
-            final FedoraObject fo = this.objectService.getObject(session, entityPath);
+            final FedoraObject fo =
+                    this.objectService.getObject(session, entityPath);
             final Model entityModel =
-                    SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset());
-            repPath = this.getCurrentVersionPath(entityModel, entityPath) + "/" +
+                    SerializationUtils.unifyDatasetModel(fo
+                            .getPropertiesDataset());
+            repPath =
+                    this.getCurrentVersionPath(entityModel, entityPath) + "/" +
                             repId;
-        }else{
-            entityPath = "/" + ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
+        } else {
+            entityPath =
+                    "/" + ENTITY_FOLDER + "/" + entityId + "/version-" +
+                            versionId;
             repPath = entityPath + "/" + repId;
         }
 
         return this.fetchRepresentation(session, repPath);
     }
 
-    public VersionList fetchVersionList(final Session session, final String entityId) throws RepositoryException{
+    public VersionList fetchVersionList(final Session session,
+            final String entityId) throws RepositoryException {
         final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
         final FedoraObject entityObject =
                 this.objectService.getObject(session, entityPath);
-        final Model model = SerializationUtils.unifyDatasetModel(entityObject.getPropertiesDataset());
-        final Resource subject = model.createResource("info:fedora" + entityPath);
-        return new VersionList(entityId, getLiteralStrings(model, subject, "http://scapeproject.eu/model#hasVersion"));
+        final Model model =
+                SerializationUtils.unifyDatasetModel(entityObject
+                        .getPropertiesDataset());
+        final Resource subject =
+                model.createResource("info:fedora" + entityPath);
+        return new VersionList(entityId, getLiteralStrings(model, subject,
+                "http://scapeproject.eu/model#hasVersion"));
     }
-
 
     public String addEntity(final Session session, final InputStream src)
             throws RepositoryException {
@@ -405,7 +415,7 @@ public class ConnectorService {
                     objectService.createObject(session, versionPath);
 
             /* add the metadata datastream for descriptive metadata */
-            if (ie.getDescriptive() != null){
+            if (ie.getDescriptive() != null) {
                 sparql.append(addMetadata(session, ie.getDescriptive(),
                         versionPath + "/DESCRIPTIVE"));
             }
@@ -460,9 +470,9 @@ public class ConnectorService {
             final String bsPath = filePath + "/" + bsId;
             final FedoraObject bsObject =
                     this.objectService.createObject(session, bsPath);
-            if (bs.getTechnical() != null){
+            if (bs.getTechnical() != null) {
                 sparql.append(addMetadata(session, bs.getTechnical(), bsPath +
-                    "/TECHNICAL"));
+                        "/TECHNICAL"));
             }
 
             sparql.append("INSERT {<info:fedora/" + bsObject.getPath() +
@@ -492,7 +502,7 @@ public class ConnectorService {
 
             /* get a handle on the binary data associated with this file */
             URI fileUri = f.getUri();
-            if (fileUri.getScheme() == null){
+            if (fileUri.getScheme() == null) {
                 fileUri = URI.create("file:" + fileUri.toASCIIString());
             }
             LOG.info("fetching file from " + fileUri.toASCIIString());
@@ -509,15 +519,15 @@ public class ConnectorService {
                                 filePath + "/DATA", f.getMimetype(), src);
 
                 /* add the metadata */
-                if (f.getTechnical() != null){
-                    sparql.append(addMetadata(session, f.getTechnical(), filePath +
-                        "/TECHNICAL"));
+                if (f.getTechnical() != null) {
+                    sparql.append(addMetadata(session, f.getTechnical(),
+                            filePath + "/TECHNICAL"));
                 }
 
                 /* add all bitstreams as child objects */
-                if (f.getBitStreams() != null){
+                if (f.getBitStreams() != null) {
                     sparql.append(addBitStreams(session, f.getBitStreams(),
-                        filePath));
+                            filePath));
                 }
 
                 sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
@@ -645,21 +655,21 @@ public class ConnectorService {
             repObject.getNode().addMixin("scape:representation");
 
             /* add the metadatasets of the rep as datastreams */
-            if (rep.getTechnical() != null){
+            if (rep.getTechnical() != null) {
                 sparql.append(addMetadata(session, rep.getTechnical(), repPath +
-                    "/TECHNICAL"));
+                        "/TECHNICAL"));
             }
-            if (rep.getSource() != null){
+            if (rep.getSource() != null) {
                 sparql.append(addMetadata(session, rep.getSource(), repPath +
                         "/SOURCE"));
             }
-            if (rep.getRights() != null){
+            if (rep.getRights() != null) {
                 sparql.append(addMetadata(session, rep.getRights(), repPath +
-                    "/RIGHTS"));
+                        "/RIGHTS"));
             }
-            if (rep.getProvenance() != null){
-                sparql.append(addMetadata(session, rep.getProvenance(), repPath +
-                    "/PROVENANCE"));
+            if (rep.getProvenance() != null) {
+                sparql.append(addMetadata(session, rep.getProvenance(),
+                        repPath + "/PROVENANCE"));
             }
 
             /* add all the files */
@@ -705,9 +715,9 @@ public class ConnectorService {
                     objectService.createObject(session, newVersionPath);
 
             /* add the metadata datastream for descriptive metadata */
-            if (ie.getDescriptive() != null){
+            if (ie.getDescriptive() != null) {
                 sparql.append(addMetadata(session, ie.getDescriptive(),
-                    newVersionPath + "/DESCRIPTIVE"));
+                        newVersionPath + "/DESCRIPTIVE"));
             }
 
             /* add all the representations */
@@ -802,7 +812,7 @@ public class ConnectorService {
 
     private void updateBitStreamMetadata(Session session, String entityId,
             String repId, String fileId, String bsId, String metadataName,
-            InputStream src) throws RepositoryException{
+            InputStream src) throws RepositoryException {
 
         try {
 
@@ -818,21 +828,23 @@ public class ConnectorService {
                 if (!r.getIdentifier().getValue().equals(repId)) {
                     representations.add(r);
                 } else {
-                    Representation.Builder newRep = new Representation.Builder(r);
+                    Representation.Builder newRep =
+                            new Representation.Builder(r);
                     List<File> files = new ArrayList<>();
-                    for (File f: r.getFiles()){
-                        if (!f.getIdentifier().getValue().equals(fileId)){
+                    for (File f : r.getFiles()) {
+                        if (!f.getIdentifier().getValue().equals(fileId)) {
                             files.add(f);
-                        }else{
+                        } else {
                             File.Builder newFile = new File.Builder(f);
                             List<BitStream> bitstreams = new ArrayList<>();
-                            for (BitStream bs: f.getBitStreams()){
-                                if (!bs.getIdentifier().getValue().equals(bsId)){
+                            for (BitStream bs : f.getBitStreams()) {
+                                if (!bs.getIdentifier().getValue().equals(bsId)) {
                                     bitstreams.add(bs);
-                                }else{
-                                    BitStream newBs = new BitStream.Builder(bs)
-                                        .technical(metadata)
-                                        .build();
+                                } else {
+                                    BitStream newBs =
+                                            new BitStream.Builder(bs)
+                                                    .technical(metadata)
+                                                    .build();
                                     bitstreams.add(newBs);
                                 }
                             }
@@ -876,15 +888,16 @@ public class ConnectorService {
                 if (!r.getIdentifier().getValue().equals(repId)) {
                     representations.add(r);
                 } else {
-                    Representation.Builder newRep = new Representation.Builder(r);
+                    Representation.Builder newRep =
+                            new Representation.Builder(r);
                     List<File> files = new ArrayList<>();
-                    for (File f: r.getFiles()){
-                        if (!f.getIdentifier().getValue().equals(fileId)){
+                    for (File f : r.getFiles()) {
+                        if (!f.getIdentifier().getValue().equals(fileId)) {
                             files.add(f);
-                        }else{
-                            File newFile = new File.Builder(f)
-                                .technical(metadata)
-                                .build();
+                        } else {
+                            File newFile =
+                                    new File.Builder(f).technical(metadata)
+                                            .build();
                             files.add(newFile);
                         }
                     }
@@ -1003,39 +1016,48 @@ public class ConnectorService {
 
     public String queueEntityForIngest(final Session session,
             final InputStream src) throws RepositoryException {
-        final String fileName = UUID.randomUUID().toString() + ".tmp";
-        final java.io.File tmp = new java.io.File(tempDirectory, fileName);
         try {
-            if (!tmp.createNewFile()) {
-                throw new RepositoryException("temporary file for id'" +
-                        fileName + "' does already exist");
-            }
+            /* copy the data to a temporary node */
+            final FedoraObject queue =
+                    this.objectService.getObject(session, QUEUE_NODE);
+            final Node item =
+                    this.datastreamService.createDatastreamNode(session,
+                            QUEUE_NODE + "/" + UUID.randomUUID().toString(),
+                            "text/xml", src);
+            /* update the ingest queue */
+            final String sparql =
+                    "INSERT {<info:fedora/" + QUEUE_NODE +
+                            "> <http://scapeproject.eu/model#hasItem> \"" +
+                            item.getPath() + "\"} WHERE {}";
+            queue.updatePropertiesDataset(sparql);
+            session.save();
+            return item.getPath().substring(QUEUE_NODE.length() + 1);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RepositoryException(e);
+        } catch (InvalidChecksumException e) {
             throw new RepositoryException(e);
         }
 
-        /* copy the data to a temp location */
-        try (final FileOutputStream sink = new FileOutputStream(tmp)) {
-            IOUtils.copy(src, sink);
-        } catch (IOException e) {
-            throw new RepositoryException(e);
-        }
-
-        /* update the ingest queue */
-        final FedoraObject queue =
-                this.objectService.getObject(session, QUEUE_NODE);
-        final String sparql =
-                "INSERT {<info:fedora/" + QUEUE_NODE +
-                        "> <http://scapeproject.eu/model#hasItem> \"" +
-                        tmp.getAbsolutePath() + "\"} WHERE {}";
-        queue.updatePropertiesDataset(sparql);
-        session.save();
-        return fileName.substring(0, fileName.length() - 4);
     }
 
     public LifecycleState fetchLifeCycleState(Session session, String entityId)
             throws RepositoryException {
+        /* check the async queue for the entity */
+        final FedoraObject queueObject =
+                this.objectService.getObject(session, QUEUE_NODE);
+        final Model queueModel =
+                SerializationUtils.unifyDatasetModel(queueObject
+                        .getPropertiesDataset());
+        final Resource parent =
+                queueModel.createResource("info:fedora" +
+                        queueObject.getPath());
+        final List<String> asyncIds =
+                this.getLiteralStrings(queueModel, parent,
+                        "http://scapeproject.eu/model#hasItem");
+        if (asyncIds.contains(QUEUE_NODE + "/" + entityId)) {
+            return new LifecycleState("", State.INGESTING);
+        }
+
         /* check if the entity exists */
         if (this.objectService.exists(session, "/" + ENTITY_FOLDER + "/" +
                 entityId)) {
@@ -1046,36 +1068,21 @@ public class ConnectorService {
             final Model entityModel =
                     SerializationUtils.unifyDatasetModel(entityObject
                             .getPropertiesDataset());
-            final Resource parent =
+            final Resource subject =
                     entityModel.createResource("info:fedora" +
                             entityObject.getPath());
             final String state =
-                    this.getFirstLiteralString(entityModel, parent,
+                    this.getFirstLiteralString(entityModel, subject,
                             "http://scapeproject.eu/model#hasLifeCycleState");
             final String details =
-                    this.getFirstLiteralString(entityModel, parent,
+                    this.getFirstLiteralString(entityModel, subject,
                             "http://scapeproject.eu/model#hasLifeCycleStateDetails");
             return new LifecycleState(details, LifecycleState.State
                     .valueOf(state));
         } else {
-            /* check the async queue for the id */
-            final FedoraObject queueObject =
-                    this.objectService.getObject(session, QUEUE_NODE);
-            final Model queueModel =
-                    SerializationUtils.unifyDatasetModel(queueObject
-                            .getPropertiesDataset());
-            final Resource parent =
-                    queueModel.createResource("info:fedora" +
-                            queueObject.getPath());
-            final List<String> asyncIds =
-                    this.getLiteralStrings(queueModel, parent,
-                            "http://scapeproject.eu/model#hasItem");
-            if (asyncIds.contains(tempDirectory + "/" + entityId + ".tmp")) {
-                return new LifecycleState("", State.INGESTING);
-            }
+            throw new ItemNotFoundException("Unable to find lifecycle for '" +
+                    entityId + "'");
         }
-        throw new ItemNotFoundException("Unable to find lifecycle for '" +
-                entityId + "'");
 
     }
 
@@ -1086,13 +1093,10 @@ public class ConnectorService {
             return;
         }
         for (String item : getItemsFromQueue(session)) {
-            try {
-                addEntity(session, new FileInputStream(item), item.substring(
-                        item.lastIndexOf('/') + 1, item.length() - 4));
-                deleteFromQueue(session, item);
-            } catch (IOException e) {
-                LOG.error("Error while processing async ingest", e);
-            }
+            final Datastream ds =
+                    this.datastreamService.getDatastream(session, item);
+            addEntity(session, ds.getContent(), item.substring(QUEUE_NODE.length() + 1));
+            deleteFromQueue(session, item);
         }
         session.logout();
     }
