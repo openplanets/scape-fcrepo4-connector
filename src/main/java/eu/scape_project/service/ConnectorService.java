@@ -1110,6 +1110,7 @@ public class ConnectorService {
                         "> <http://scapeproject.eu/model#hasItem> \"" + item +
                         "\"} WHERE {}";
         queueObject.updatePropertiesDataset(sparql);
+        this.nodeService.deleteObject(session, item);
         session.save();
     }
 
