@@ -4,6 +4,19 @@ SCAPE Connector API on Fedora 4
 This is the implementation of the SCAPE Connector API as described by the spec available at 
 https://github.com/openplanets/scape-apis
 
+Proxy Settings
+--------------
+
+The webapp needs access to the internet when it should fetch files from the WWW
+If you're getting 
+```java 
+javax.jcr.RepositoryException: java.net.ConnectException
+at eu.scape_project.service.ConnectorService.addFiles(ConnectorService.java:540)
+```
+the Servlet Container needs to know about the proxy settings. In e.g. Tomcat you can add the following to tomcat/bin/catalina.sh:
+```
+CATALINA_OPTS="$CATALINA_OPTS -Dhttp.proxyHost=proxy.example.com -Dhttp.proxyPort=4242"
+```
 
 Prepackaged WAR 
 ---------------
@@ -99,4 +112,5 @@ Run the servlet container again and check that you can interact with the Plan Ma
 $ {TOMCAT_HOME}/bin/catalina.sh run
 $ curl -X POST http://localhost:8080/fcrepo/rest/scape/entity -d @${CONNECTOR_FOLDER}/src/test/resources/entity-minimal.xml
 ```
+
 
