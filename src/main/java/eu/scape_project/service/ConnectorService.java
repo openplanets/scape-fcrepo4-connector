@@ -405,8 +405,10 @@ public class ConnectorService {
                     objectService.createObject(session, versionPath);
 
             /* add the metadata datastream for descriptive metadata */
-            sparql.append(addMetadata(session, ie.getDescriptive(),
-                    versionPath + "/DESCRIPTIVE"));
+            if (ie.getDescriptive() != null){
+                sparql.append(addMetadata(session, ie.getDescriptive(),
+                        versionPath + "/DESCRIPTIVE"));
+            }
 
             /* add all the representations */
             sparql.append(addRepresentations(session, ie.getRepresentations(),
@@ -458,8 +460,10 @@ public class ConnectorService {
             final String bsPath = filePath + "/" + bsId;
             final FedoraObject bsObject =
                     this.objectService.createObject(session, bsPath);
-            sparql.append(addMetadata(session, bs.getTechnical(), bsPath +
+            if (bs.getTechnical() != null){
+                sparql.append(addMetadata(session, bs.getTechnical(), bsPath +
                     "/TECHNICAL"));
+            }
 
             sparql.append("INSERT {<info:fedora/" + bsObject.getPath() +
                     "> <http://scapeproject.eu/model#hasType> \"bitstream\"} WHERE {};");
@@ -487,8 +491,12 @@ public class ConnectorService {
             final String filePath = repPath + "/" + fileId;
 
             /* get a handle on the binary data associated with this file */
-            LOG.info("fetching file from " + f.getUri().toASCIIString());
-            try (final InputStream src = f.getUri().toURL().openStream()) {
+            URI fileUri = f.getUri();
+            if (fileUri.getScheme() == null){
+                fileUri = URI.create("file:" + fileUri.toASCIIString());
+            }
+            LOG.info("fetching file from " + fileUri.toASCIIString());
+            try (final InputStream src = fileUri.toURL().openStream()) {
 
                 /* create a datastream in fedora for this file */
                 final FedoraObject fileObject =
@@ -501,12 +509,16 @@ public class ConnectorService {
                                 filePath + "/DATA", f.getMimetype(), src);
 
                 /* add the metadata */
-                sparql.append(addMetadata(session, f.getTechnical(), filePath +
+                if (f.getTechnical() != null){
+                    sparql.append(addMetadata(session, f.getTechnical(), filePath +
                         "/TECHNICAL"));
+                }
 
                 /* add all bitstreams as child objects */
-                sparql.append(addBitStreams(session, f.getBitStreams(),
+                if (f.getBitStreams() != null){
+                    sparql.append(addBitStreams(session, f.getBitStreams(),
                         filePath));
+                }
 
                 sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
                         "> <http://scapeproject.eu/model#hasType> \"file\"} WHERE {};");
@@ -534,7 +546,7 @@ public class ConnectorService {
         return sparql.toString();
     }
 
-    private String addMetadata(final Session session, final Object descriptive,
+    private String addMetadata(final Session session, final Object metadata,
             final String path) throws RepositoryException {
         final StringBuilder sparql = new StringBuilder();
         try {
@@ -549,7 +561,7 @@ public class ConnectorService {
                 public void run() {
                     try {
                         ConnectorService.this.marshaller.getJaxbMarshaller()
-                                .marshal(descriptive, dcSink);
+                                .marshal(metadata, dcSink);
                         dcSink.flush();
                         dcSink.close();
                     } catch (JAXBException e) {
@@ -568,34 +580,34 @@ public class ConnectorService {
             String type = "unknown";
             String schema = "";
 
-            if (descriptive.getClass() == ElementContainer.class) {
+            if (metadata.getClass() == ElementContainer.class) {
                 type = "dublin-core";
                 schema = "http://purl.org/dc/elements/1.1/";
-            } else if (descriptive.getClass() == GbsType.class) {
+            } else if (metadata.getClass() == GbsType.class) {
                 type = "gbs";
                 schema = "http://books.google.com/gbs";
-            } else if (descriptive.getClass() == Fits.class) {
+            } else if (metadata.getClass() == Fits.class) {
                 type = "fits";
                 schema = "http://hul.harvard.edu/ois/xml/ns/fits/fits_output";
-            } else if (descriptive.getClass() == AudioType.class) {
+            } else if (metadata.getClass() == AudioType.class) {
                 type = "audiomd";
                 schema = "http://www.loc.gov/audioMD/";
-            } else if (descriptive.getClass() == RecordType.class) {
+            } else if (metadata.getClass() == RecordType.class) {
                 type = "marc21";
                 schema = "http://www.loc.gov/MARC21/slim";
-            } else if (descriptive.getClass() == Mix.class) {
+            } else if (metadata.getClass() == Mix.class) {
                 type = "mix";
                 schema = "http://www.loc.gov/mix/v20";
-            } else if (descriptive.getClass() == VideoType.class) {
+            } else if (metadata.getClass() == VideoType.class) {
                 type = "videomd";
                 schema = "http://www.loc.gov/videoMD/";
-            } else if (descriptive.getClass() == PremisComplexType.class) {
+            } else if (metadata.getClass() == PremisComplexType.class) {
                 type = "premis-provenance";
                 schema = "info:lc/xmlns/premis-v2";
-            } else if (descriptive.getClass() == RightsComplexType.class) {
+            } else if (metadata.getClass() == RightsComplexType.class) {
                 type = "premis-rights";
                 schema = "info:lc/xmlns/premis-v2";
-            } else if (descriptive.getClass() == TextMD.class) {
+            } else if (metadata.getClass() == TextMD.class) {
                 type = "textmd";
                 schema = "info:lc/xmlns/textmd-v3";
             }
@@ -633,14 +645,22 @@ public class ConnectorService {
             repObject.getNode().addMixin("scape:representation");
 
             /* add the metadatasets of the rep as datastreams */
-            sparql.append(addMetadata(session, rep.getTechnical(), repPath +
+            if (rep.getTechnical() != null){
+                sparql.append(addMetadata(session, rep.getTechnical(), repPath +
                     "/TECHNICAL"));
-            sparql.append(addMetadata(session, rep.getSource(), repPath +
-                    "/SOURCE"));
-            sparql.append(addMetadata(session, rep.getRights(), repPath +
+            }
+            if (rep.getSource() != null){
+                sparql.append(addMetadata(session, rep.getSource(), repPath +
+                        "/SOURCE"));
+            }
+            if (rep.getRights() != null){
+                sparql.append(addMetadata(session, rep.getRights(), repPath +
                     "/RIGHTS"));
-            sparql.append(addMetadata(session, rep.getProvenance(), repPath +
+            }
+            if (rep.getProvenance() != null){
+                sparql.append(addMetadata(session, rep.getProvenance(), repPath +
                     "/PROVENANCE"));
+            }
 
             /* add all the files */
             sparql.append(addFiles(session, rep.getFiles(), repPath));
@@ -685,8 +705,10 @@ public class ConnectorService {
                     objectService.createObject(session, newVersionPath);
 
             /* add the metadata datastream for descriptive metadata */
-            sparql.append(addMetadata(session, ie.getDescriptive(),
+            if (ie.getDescriptive() != null){
+                sparql.append(addMetadata(session, ie.getDescriptive(),
                     newVersionPath + "/DESCRIPTIVE"));
+            }
 
             /* add all the representations */
             sparql.append(addRepresentations(session, ie.getRepresentations(),

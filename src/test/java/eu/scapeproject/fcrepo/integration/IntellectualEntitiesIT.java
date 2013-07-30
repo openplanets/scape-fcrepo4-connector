@@ -742,6 +742,29 @@ public class IntellectualEntitiesIT {
 
     }
 
+    @Test
+    public void testIngestAndRetrieveONBIntellectualEntity() throws Exception {
+        /* create the test files */
+        new java.io.File("00000001.jp2").createNewFile();
+        new java.io.File("00000001.txt").createNewFile();
+        new java.io.File("00000001.html").createNewFile();
+
+        HttpPost post = new HttpPost(SCAPE_URL + "/entity");
+        post.setEntity(new InputStreamEntity(this.getClass().getClassLoader().getResourceAsStream("ONB_mets_example.xml"), -1, ContentType.TEXT_XML));
+        HttpResponse resp = this.client.execute(post);
+        String id = EntityUtils.toString(resp.getEntity());
+        assertEquals(201, resp.getStatusLine().getStatusCode());
+        post.releaseConnection();
+
+        HttpGet get =
+                new HttpGet(SCAPE_URL + "/entity/" + id);
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, resp.getEntity().getContent());
+        assertEquals(id, ie.getIdentifier().getValue());
+        get.releaseConnection();
+    }
+
     private void postEntity(IntellectualEntity ie) throws IOException {
         HttpPost post = new HttpPost(SCAPE_URL + "/entity");
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
