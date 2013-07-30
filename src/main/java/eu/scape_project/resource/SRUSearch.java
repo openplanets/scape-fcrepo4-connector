@@ -54,6 +54,7 @@ public class SRUSearch {
     final String operation, @QueryParam("query")
     final String query, @QueryParam("version")
     final String version, @QueryParam("startRecord")
+    @DefaultValue("0")
     final int offset, @QueryParam("maximumRecords")
     @DefaultValue("25")
     final int limit) throws RepositoryException {
