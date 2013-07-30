@@ -6,10 +6,16 @@
   http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-3.0.xsd
   http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
 
+  <context:property-placeholder />
+  
   <context:annotation-config />
 
   <context:component-scan
-    base-package="eu.scape_project.web.listener, eu.scape_project.resource, eu.scape_project.service" />
+    base-package="eu.scape_project.web.listener, eu.scape_project.resource" />
+    
+  <bean class="eu.scape_project.service.ConnectorService">
+    <property name="fedoraUrl" value="${scape.fcrepo.url:http://localhost:8080/rest}" />
+  </bean>
 
   <task:scheduler id="taskScheduler" />
   <task:executor id="taskExecutor" pool-size="1" />

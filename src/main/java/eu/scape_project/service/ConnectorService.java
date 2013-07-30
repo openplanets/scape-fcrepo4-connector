@@ -83,8 +83,7 @@ public class ConnectorService {
 
     public final static String QUEUE_NODE = "/objects/scape/queue";
 
-    //TODO: this should be taken from the UriInfo or at least from a bean config
-    private final String fedoraUrl = "http://localhost:8080/rest";
+    private String fedoraUrl;
 
     private final ScapeMarshaller marshaller;
 
@@ -114,6 +113,10 @@ public class ConnectorService {
         if (!tempDirectory.exists()) {
             tempDirectory.mkdir();
         }
+    }
+
+    public void setFedoraUrl(String fedoraUrl) {
+        this.fedoraUrl = fedoraUrl;
     }
 
     public IntellectualEntity
