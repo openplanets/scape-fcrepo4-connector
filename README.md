@@ -110,11 +110,138 @@ Update the configuration of the web application in order to have Fedora 4 discov
 ```
 #### 7. Start the servlet container
 
-Run the servlet container again and check that you can interact with the Plan Management API
 
 ```bash
 $ {TOMCAT_HOME}/bin/catalina.sh run
-$ curl -X POST http://localhost:8080/fcrepo/rest/scape/entity -d @${CONNECTOR_FOLDER}/src/test/resources/entity-minimal.xml
 ```
 
 
+Examples
+--------
+More examples can be found in the integration tests at https://github.com/openplanets/scape-fcrepo4-connector/blob/master/src/test/java/eu/scapeproject/fcrepo/integration/IntellectualEntitiesIT.java
+
+
+#### Ingest an Intellectual Entity:
+
+```bash
+$ curl -X POST http://localhost:8080/fcrepo/rest/scape/entity -d @${CONNECTOR_FOLDER}/src/test/resources/entity-minimal.xml
+```
+
+#### Ingest an Intellectual Entity asynchronously:
+
+```bash
+$ curl -X POST http://localhost:8080/fcrepo/rest/scape/entity-async -d @${CONNECTOR_FOLDER}/src/test/resources/entity-minimal.xml
+```
+
+#### Retrieve an Intellectual Entity:
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/entity/entity-1
+```
+
+#### Retrieve an distinct Intellectual Entity version:
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/entity/entity-1/1
+```
+
+#### Retrieve an Intellectual Entity using references for child elements:
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/entity/entity-1?useReferences=yes
+```
+
+#### Retrieve an Intellectual Entity list
+
+```bash
+$ curl -H "Content-Type:text/uri-list" -X POST http://localhost:8080/fcrepo/rest/scape/entity-list -d "http://localhost:8080/fcrepo/rest/scape/entity/entity-1"
+```
+
+#### Retrieve a Representation:
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/representation/entity-1/representation-1
+```
+
+#### Retrieve a binary File:
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/file/entity-1/representation-1/file-1
+```
+
+#### Retrieve a Bitstream:
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/bitstream/entity-1/representation-1/file-1/bitstream-1
+```
+
+#### Retrieve the life cycle state of an Intellectual Entity
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/lifecycle/entity-1
+```
+
+#### Retrieve the descriptive metadata of an Intellectual entity
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/DESCRIPTIVE
+```
+
+#### Retrieve the source/rights/provenance or technical metadata of a Representation 
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/representation-1/SOURCE
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/representation-1/RIGHTS
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/representation-1/PROVENANCE
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/representation-1/TECHNICAL
+```
+
+#### Retrieve the technical metadata of a File 
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/representation-1/file-1/TECHNICAL
+```
+
+#### Retrieve the technical metadata of a BitStream 
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/representation-1/file-1/bitstream-1/TECHNICAL
+```
+
+#### Retrieve the Version List of an Intellectual Entity
+
+```bash
+$ curl -X GET http://localhost:8080/fcrepo/rest/scape/entity-version-list/entity-1
+```
+#### Update an Intellectual Entity
+
+```bash
+$ curl -H "Content-Type:text/xml" -X PUT http://localhost:8080/fcrepo/rest/scape/entity/entity-1 -d @${CONNECTOR_FOLDER}/src/test/resources/entity-minimal.xml
+```
+
+#### Update Metadata of an Intellectual Entity/Representation/File/Bitstream
+
+```bash
+$ curl -H "Content-Type:text/xml" -X PUT http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/DESCRIPTIVE -d '<dc:dublin-core xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>foo</dc:title></dc:dublin-core>'
+$ curl -H "Content-Type:text/xml" -X PUT http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/representation-1/SOURCE -d '<dc:dublin-core xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>foo</dc:title></dc:dublin-core>'
+$ curl -H "Content-Type:text/xml" -X PUT http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/representation-1/file-1/TECHNICAL -d '<textmd:textMD xmlns:textmd="info:lc/xmlns/textmd-v3"><textmd:encoding><textmd:encoding_platform linebreak="LF"></textmd:encoding_platform></textmd:encoding></textmd:textMD>'
+$ curl -H "Content-Type:text/xml" -X PUT http://localhost:8080/fcrepo/rest/scape/metadata/entity-1/representation-1/file-1/bitstream-1/TECHNICAL -d '<dc:dublin-core xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>foo</dc:title></dc:dublin-core>'
+```
+
+#### Search Intellectual Entities:
+
+```bash
+$ curl -X GET "http://localhost:8080/fcrepo/rest/scape/sru/entities?version=1&operation=searchRetrieve&query=*"
+```bash
+
+#### Search Representations:
+
+```bash
+$ curl -X GET "http://localhost:8080/fcrepo/rest/scape/sru/representations?version=1&operation=searchRetrieve&query=*"
+``` 
+
+#### Search Files:
+
+```bash
+$ curl -X GET "http://localhost:8080/fcrepo/rest/scape/sru/files?version=1&operation=searchRetrieve&query=*"
+```bash
