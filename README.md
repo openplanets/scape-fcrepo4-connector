@@ -51,13 +51,13 @@ $ cd scape-platform-datamodel
 $ mvn clean install
 ```
 
-#### 4. Create the Plan Management JAR
+#### 4. Create the Connector API implmentation JAR
 
-Checkout and build/package the plan Management api from https://github.com/openplanets/scape-fcrepo4-planmanagement
+Checkout and build/package the connector api implementation from https://github.com/openplanets/scape-fcrepo4-connector
 
 ```bash
-$ git clone https://github.com/openplanets/scape-fcrepo4-planmanagement.git
-$ cd scape-fcrepo4-planmanagement
+$ git clone https://github.com/openplanets/scape-fcrepo4-connector.git
+$ cd scape-fcrepo4-connector
 $ mvn clean compile package
 ```	
 
@@ -66,7 +66,7 @@ $ mvn clean compile package
 Copy the required JAR files from platform data model and Plan Management API to the Fedora 4 Webapp
 
 ```bash
-$ cp scape-fcrepo4-planmanagement/target/scape-fcrepo4-planmanagement-{VERSION}.jar {TOMCAT_HOME}/webapps/fcrepo/WEB-INF/lib/
+$ cp scape-fcrepo4-connector/target/scape-fcrepo4-connector-{VERSION}.jar {TOMCAT_HOME}/webapps/fcrepo/WEB-INF/lib/
 $ cp scape-platform-datamodel/target/scape-platform-datamodel-{VERSION}.jar {TOMCAT_HOME}/webapps/fcrepo/WEB-INF/lib/
 ```
 	
@@ -97,6 +97,6 @@ Run the servlet container again and check that you can interact with the Plan Ma
 
 ```bash
 $ {TOMCAT_HOME}/bin/catalina.sh run
-$ curl -X PUT http://localhost:8080/fcrepo/rest/scape/plan/myplan -d "empty-plan"
+$ curl -X POST http://localhost:8080/fcrepo/rest/scape/entity -d @${CONNECTOR_FOLDER}/src/test/resources/entity-minimal.xml
 ```
 
