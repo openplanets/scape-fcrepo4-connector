@@ -5,8 +5,8 @@ This is the implementation of the SCAPE Connector API as described by the spec a
 https://github.com/openplanets/scape-apis
 
 
-Installation
-------------
+Prepackaged WAR 
+---------------
 
 A prepackaged Fedora 4 WAR file which includes the SCAPE Connector API and the SCAPE Plan Management API is available at
 https://docs.google.com/file/d/0B5nd_qlYdcqyVXFzZ1B4dmdzN28/edit?usp=sharing
