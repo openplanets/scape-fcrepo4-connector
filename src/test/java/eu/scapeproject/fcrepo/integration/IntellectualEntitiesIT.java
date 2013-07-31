@@ -676,8 +676,9 @@ public class IntellectualEntitiesIT {
         this.postEntity(ie1);
 
         File f = new File.Builder(ie1.getRepresentations().get(0).getFiles().get(0))
-            .uri(URI.create("http://example.com/data"))
-            .filename("foo.xml")
+            .uri(URI.create("http://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Wikipedia_wordmark.svg/174px-Wikipedia_wordmark.svg.png"))
+            .filename("wikipedia.png")
+            .mimetype("image/png")
             .build();
 
         Representation r = new Representation.Builder(ie1.getRepresentations().get(0))
