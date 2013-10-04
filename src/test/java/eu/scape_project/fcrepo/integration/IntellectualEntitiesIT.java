@@ -12,7 +12,7 @@
    limitations under the License.
  */
 
-package eu.scapeproject.fcrepo.integration;
+package eu.scape_project.fcrepo.integration;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -48,16 +48,16 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import edu.harvard.hul.ois.xml.ns.fits.fits_output.Fits;
-import eu.scapeproject.model.BitStream;
-import eu.scapeproject.model.File;
-import eu.scapeproject.model.IntellectualEntity;
-import eu.scapeproject.model.IntellectualEntityCollection;
-import eu.scapeproject.model.LifecycleState;
-import eu.scapeproject.model.LifecycleState.State;
-import eu.scapeproject.model.Representation;
-import eu.scapeproject.model.TestUtil;
-import eu.scapeproject.model.VersionList;
-import eu.scapeproject.util.ScapeMarshaller;
+import eu.scape_project.model.BitStream;
+import eu.scape_project.model.File;
+import eu.scape_project.model.IntellectualEntity;
+import eu.scape_project.model.IntellectualEntityCollection;
+import eu.scape_project.model.LifecycleState;
+import eu.scape_project.model.LifecycleState.State;
+import eu.scape_project.model.Representation;
+import eu.scape_project.model.TestUtil;
+import eu.scape_project.model.VersionList;
+import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * @author frank asseg
