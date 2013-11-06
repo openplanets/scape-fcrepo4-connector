@@ -45,14 +45,14 @@ import javax.jcr.query.qom.QueryObjectModelFactory;
 import javax.jcr.query.qom.Source;
 import javax.xml.bind.JAXBException;
 
-import org.fcrepo.Datastream;
-import org.fcrepo.FedoraObject;
-import org.fcrepo.exception.InvalidChecksumException;
-import org.fcrepo.rdf.SerializationUtils;
-import org.fcrepo.services.DatastreamService;
-import org.fcrepo.services.NodeService;
-import org.fcrepo.services.ObjectService;
-import org.fcrepo.session.SessionFactory;
+import org.fcrepo.kernel.Datastream;
+import org.fcrepo.kernel.FedoraObject;
+import org.fcrepo.kernel.exception.InvalidChecksumException;
+import org.fcrepo.kernel.rdf.SerializationUtils;
+import org.fcrepo.kernel.services.DatastreamService;
+import org.fcrepo.kernel.services.NodeService;
+import org.fcrepo.kernel.services.ObjectService;
+import org.fcrepo.http.commons.session.SessionFactory;
 import org.purl.dc.elements._1.ElementContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,17 +68,18 @@ import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 import edu.harvard.hul.ois.xml.ns.fits.fits_output.Fits;
+import eu.scape_project.resource.Bitstreams;
 import eu.scape_project.util.ContentTypeInputStream;
-import eu.scapeproject.model.BitStream;
-import eu.scapeproject.model.File;
-import eu.scapeproject.model.Identifier;
-import eu.scapeproject.model.IntellectualEntity;
-import eu.scapeproject.model.IntellectualEntityCollection;
-import eu.scapeproject.model.LifecycleState;
-import eu.scapeproject.model.LifecycleState.State;
-import eu.scapeproject.model.Representation;
-import eu.scapeproject.model.VersionList;
-import eu.scapeproject.util.ScapeMarshaller;
+import eu.scape_project.model.BitStream;
+import eu.scape_project.model.File;
+import eu.scape_project.model.Identifier;
+import eu.scape_project.model.IntellectualEntity;
+import eu.scape_project.model.IntellectualEntityCollection;
+import eu.scape_project.model.LifecycleState;
+import eu.scape_project.model.LifecycleState.State;
+import eu.scape_project.model.Representation;
+import eu.scape_project.model.VersionList;
+import eu.scape_project.util.ScapeMarshaller;
 import gov.loc.audiomd.AudioType;
 import gov.loc.marc21.slim.RecordType;
 import gov.loc.mix.v20.Mix;
@@ -201,7 +202,7 @@ public class ConnectorService {
                 "http://scapeproject.eu/model#currentVersion").substring(11);
     }
 
-    public BitStream fetchBitStream(final Session session, final String bsUri)
+    public Bitstreams fetchBitStream(final Session session, final String bsUri)
             throws RepositoryException {
         final BitStream.Builder bs = new BitStream.Builder();
         bs.identifier(new Identifier(bsUri

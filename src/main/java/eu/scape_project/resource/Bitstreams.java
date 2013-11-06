@@ -32,8 +32,8 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import eu.scape_project.service.ConnectorService;
-import eu.scapeproject.model.BitStream;
-import eu.scapeproject.util.ScapeMarshaller;
+import eu.scape_project.model.BitStream;
+import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * JAX-RS Resource for BitStreams

@@ -36,14 +36,14 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.StreamingOutput;
 import javax.xml.bind.JAXBException;
 
-import org.fcrepo.session.InjectedSession;
+import org.fcrepo.http.commons.session.InjectedSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import eu.scape_project.service.ConnectorService;
-import eu.scapeproject.model.IntellectualEntity;
-import eu.scapeproject.util.ScapeMarshaller;
+import eu.scape_project.model.IntellectualEntity;
+import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * JAX-RS Resource for Intellectual Entities
