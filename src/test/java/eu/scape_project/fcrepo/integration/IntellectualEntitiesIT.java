@@ -45,6 +45,8 @@ import org.purl.dc.elements._1.ElementContainer;
 import org.purl.dc.elements._1.SimpleLiteral;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
@@ -66,6 +68,7 @@ import eu.scape_project.util.ScapeMarshaller;
  */
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = {"/integration-tests/managed-content/test-container.xml"})
+@DirtiesContext(classMode=ClassMode.AFTER_CLASS)
 public class IntellectualEntitiesIT extends AbstractIT{
 
     private static final Logger LOG = LoggerFactory
@@ -742,28 +745,4 @@ public class IntellectualEntitiesIT extends AbstractIT{
         get.releaseConnection();
 
     }
-
-    @Test
-    public void testIngestAndRetrieveONBIntellectualEntity() throws Exception {
-        /* create the test files */
-        new java.io.File("00000001.jp2").createNewFile();
-        new java.io.File("00000001.txt").createNewFile();
-        new java.io.File("00000001.html").createNewFile();
-
-        HttpPost post = new HttpPost(SCAPE_URL + "/entity");
-        post.setEntity(new InputStreamEntity(this.getClass().getClassLoader().getResourceAsStream("ONB_mets_example.xml"), -1, ContentType.TEXT_XML));
-        HttpResponse resp = this.client.execute(post);
-        String id = EntityUtils.toString(resp.getEntity());
-        assertEquals(201, resp.getStatusLine().getStatusCode());
-        post.releaseConnection();
-
-        HttpGet get =
-                new HttpGet(SCAPE_URL + "/entity/" + id);
-        resp = this.client.execute(get);
-        assertEquals(200, resp.getStatusLine().getStatusCode());
-        IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, resp.getEntity().getContent());
-        assertEquals(id, ie.getIdentifier().getValue());
-        get.releaseConnection();
-    }
-
 }

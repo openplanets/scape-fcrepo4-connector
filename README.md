@@ -22,6 +22,26 @@ the Servlet Container needs to know about the proxy settings. In e.g. Tomcat you
 CATALINA_OPTS="$CATALINA_OPTS -Dhttp.proxyHost=proxy.example.com -Dhttp.proxyPort=4242"
 ```
 
+ONB specific settings
+---------------------
+In order to accommodate the use case of the ONB testbed ingest the following java system properties have been added:
+
+* _scape.onb.pairtree.basepath_ The base path where the files at ONB are located
+* _scape.onb.pairtree.encapsulated_ The encapsulated directory of the path
+```Java
+JAVA_OPTS="$JAVA_OPTS -Dscape.onb.pairtree.basepath=/tmp/scape/onb -Dscape.onb.pairtree.basepath=onb"
+```
+
+
+Managed vs. Referenced Content
+------------------------------
+The following java property can be used to configure the conenctor api to use managed/referenced content:
+* _scape.fcrepo.content.referenced_ [Default: false] Boolean value for switching between managed and referenced content
+```Java
+JAVA_OPTS="$JAVA_OPTS -Dscape.fcrepo.content.referenced=true"
+```
+ 
+
 Prepackaged WAR 
 ---------------
 
@@ -246,3 +266,11 @@ Update the configuration of the web application in order to have Fedora 4 discov
 ```bash
 $ {TOMCAT_HOME}/bin/catalina.sh run
 ```
+
+
+
+Notes:
+mvn install:install-file -Dfile=/home/ruckus/Downloads/pairtree-1.1.1.jar -DartifactId=pairtree -Dversion=1.1.1 -DgroupId=gov.loc -Dpackaging=jar
+http://sourceforge.net/projects/loc-xferutils/files/loc-pairtree-java-library/pairtree-1.1.1.jar/download
+
+
