@@ -14,6 +14,8 @@
 
 package eu.scape_project.resource;
 
+import java.io.FileNotFoundException;
+
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.ws.rs.GET;
@@ -27,6 +29,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import eu.scape_project.model.File;
+import eu.scape_project.model.IntellectualEntity;
+import eu.scape_project.model.Representation;
 import eu.scape_project.service.ConnectorService;
 import eu.scape_project.util.ContentTypeInputStream;
 import eu.scape_project.util.ScapeMarshaller;
@@ -62,8 +67,22 @@ public class Files {
     final String entityId, @PathParam("rep-id")
     final String repId, @PathParam("file-id")
     final String fileId) throws RepositoryException {
-        final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId, null);
-        return Response.ok().entity(src).type(src.getContentType()).build();
+    	if (connectorService.isReferencedContent()) {
+    		IntellectualEntity e = connectorService.fetchEntity(session, entityId);
+    		for (Representation r: e.getRepresentations()) {
+    			if (r.getIdentifier().getValue().equals(repId)){
+    				for (File f:r.getFiles()){
+    					if (f.getIdentifier().getValue().equals(fileId)){
+    						return Response.temporaryRedirect(f.getUri()).build();
+    					}
+    				}
+    			}
+    		}
+    		throw new RepositoryException(new FileNotFoundException());
+    	}else {
+    		final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId, null);
+    		return Response.ok().entity(src).type(src.getContentType()).build();
+    	}
     }
 
 
@@ -74,7 +93,21 @@ public class Files {
     final String repId, @PathParam("file-id")
     final String fileId,@PathParam("version-id")
     final String versionId) throws RepositoryException {
-        final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId, versionId);
-        return Response.ok().entity(src).type(src.getContentType()).build();
+    	if (connectorService.isReferencedContent()) {
+    		IntellectualEntity e = connectorService.fetchEntity(session, entityId);
+    		for (Representation r: e.getRepresentations()) {
+    			if (r.getIdentifier().getValue().equals(repId)){
+    				for (File f:r.getFiles()){
+    					if (f.getIdentifier().equals(fileId)){
+    						return Response.temporaryRedirect(f.getUri()).build();
+    					}
+    				}
+    			}
+    		}
+    		throw new RepositoryException(new FileNotFoundException());
+    	}else {
+    		final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId, versionId);
+    		return Response.ok().entity(src).type(src.getContentType()).build();
+    	}
     }
 }

@@ -38,6 +38,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.purl.dc.elements._1.ElementContainer;
@@ -64,24 +65,12 @@ import eu.scape_project.util.ScapeMarshaller;
  *
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(locations = {"/integration-tests/test-container.xml"})
-public class IntellectualEntitiesIT {
-
-    private static final String SCAPE_URL = "http://localhost:8080/rest/scape";
-
-    private static final String FEDORA_URL = "http://localhost:8080/rest/";
-
-    private final DefaultHttpClient client = new DefaultHttpClient();
-
-    private ScapeMarshaller marshaller;
+@ContextConfiguration(locations = {"/integration-tests/managed-content/test-container.xml"})
+public class IntellectualEntitiesIT extends AbstractIT{
 
     private static final Logger LOG = LoggerFactory
             .getLogger(IntellectualEntitiesIT.class);
 
-    @Before
-    public void setup() throws Exception {
-        this.marshaller = ScapeMarshaller.newInstance();
-    }
 
     @Test
     public void testIngestIntellectualEntityAndCheckinFedora() throws Exception {
@@ -676,7 +665,8 @@ public class IntellectualEntitiesIT {
         this.postEntity(ie1);
 
         File f = new File.Builder(ie1.getRepresentations().get(0).getFiles().get(0))
-            .uri(URI.create("http://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Wikipedia_wordmark.svg/174px-Wikipedia_wordmark.svg.png"))
+            .uri(URI.create(TestUtil.class.getClassLoader().getResource(
+                    "scape_logo.png").toString()))
             .filename("wikipedia.png")
             .mimetype("image/png")
             .build();
@@ -774,23 +764,6 @@ public class IntellectualEntitiesIT {
         IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, resp.getEntity().getContent());
         assertEquals(id, ie.getIdentifier().getValue());
         get.releaseConnection();
-    }
-
-    private void postEntity(IntellectualEntity ie) throws IOException {
-        HttpPost post = new HttpPost(SCAPE_URL + "/entity");
-        ByteArrayOutputStream sink = new ByteArrayOutputStream();
-        try {
-            this.marshaller.serialize(ie, sink);
-        } catch (JAXBException e) {
-            throw new IOException(e);
-        }
-        post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
-                .toByteArray()), sink.size()));
-        HttpResponse resp = this.client.execute(post);
-        assertEquals(201, resp.getStatusLine().getStatusCode());
-        String id = EntityUtils.toString(resp.getEntity());
-        assertTrue(id.length() > 0);
-        post.releaseConnection();
     }
 
 }

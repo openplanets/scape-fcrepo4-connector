@@ -97,7 +97,9 @@ public class ConnectorService {
 
     public final static String QUEUE_NODE = "/objects/scape/queue";
 
-    private String fedoraUrl;
+    public String fedoraUrl;
+    
+    public boolean referencedContent;
 
     private final ScapeMarshaller marshaller;
 
@@ -128,10 +130,22 @@ public class ConnectorService {
             tempDirectory.mkdir();
         }
     }
-
+    
+    public String getFedoraUrl() {
+		return fedoraUrl;
+	}
+    
     public void setFedoraUrl(String fedoraUrl) {
         this.fedoraUrl = fedoraUrl;
     }
+    
+    public boolean isReferencedContent() {
+		return referencedContent;
+	}
+    
+    public void setReferencedContent(boolean referencedContent) {
+		this.referencedContent = referencedContent;
+	}
 
     public IntellectualEntity
             fetchEntity(final Session session, final String id)
@@ -231,7 +245,7 @@ public class ConnectorService {
                             versionId;
             dsPath = entityPath + "/" + repId + "/" + fileId + "/DATA";
         }
-
+        
         final Datastream ds =
                 this.datastreamService.getDatastream(session, dsPath);
 
@@ -243,27 +257,30 @@ public class ConnectorService {
         final File.Builder f = new File.Builder();
         final FedoraObject fileObject =
                 this.objectService.getObject(session, fileUri);
-        final Model repModel =
+        final Model fileModel =
                 SerializationUtils.unifyDatasetModel(fileObject
                         .getPropertiesDataset());
         final Resource parent =
-                repModel.createResource("info:fedora" + fileObject.getPath());
+                fileModel.createResource("info:fedora" + fileObject.getPath());
 
         /* fetch and add the properties and metadata from the repo */
         f.technical(fetchMetadata(session, fileUri + "/TECHNICAL"));
         String fileId = fileUri.substring(fileUri.lastIndexOf('/') + 1);
         f.identifier(new Identifier(fileId));
-        f.filename(getFirstLiteralString(repModel, parent,
+        f.filename(getFirstLiteralString(fileModel, parent,
                 "http://scapeproject.eu/model#hasFileName"));
-        f.mimetype(getFirstLiteralString(repModel, parent,
+        f.mimetype(getFirstLiteralString(fileModel, parent,
                 "http://scapeproject.eu/model#hasMimeType"));
         String[] ids = fileUri.split("/");
-        f.uri(URI.create(fedoraUrl + "/scape/file/" + ids[ids.length - 4] +
+        if (this.referencedContent) {
+        	f.uri(URI.create(getFirstLiteralString(fileModel, parent, "http://scapeproject.eu/model#hasReferencedContent")));
+        }else {
+        	f.uri(URI.create(fedoraUrl + "/scape/file/" + ids[ids.length - 4] +
                 "/" + ids[ids.length - 2] + "/" + ids[ids.length - 1]));
-
+        }
         /* discover all the Bistreams and add them to the file */
         final List<BitStream> streams = new ArrayList<>();
-        for (String bsUri : getLiteralStrings(repModel, parent,
+        for (String bsUri : getLiteralStrings(fileModel, parent,
                 "http://scapeproject.eu/model#hasBitStream")) {
             streams.add(fetchBitStream(session, bsUri.substring(11)));
         }
@@ -517,56 +534,59 @@ public class ConnectorService {
                             : UUID.randomUUID().toString();
             final String filePath = repPath + "/" + fileId;
 
-            /* get a handle on the binary data associated with this file */
             URI fileUri = f.getUri();
             if (fileUri.getScheme() == null) {
-                fileUri = URI.create("file:" + fileUri.toASCIIString());
+            	fileUri = URI.create("file:" + fileUri.toASCIIString());
             }
-            LOG.info("fetching file from " + fileUri.toASCIIString());
-            try (final InputStream src = fileUri.toURL().openStream()) {
 
-                /* create a datastream in fedora for this file */
-                final FedoraObject fileObject =
-                        this.objectService.createObject(session, filePath);
-                fileObject.getNode().addMixin("scape:file");
+            /* create a datastream in fedora for this file */
+            final FedoraObject fileObject =
+                    this.objectService.createObject(session, filePath);
+            fileObject.getNode().addMixin("scape:file");
 
-                /* add the binary data referenced in the file as a datastream */
-                final Node fileDs =
-                        this.datastreamService.createDatastreamNode(session,
-                                filePath + "/DATA", f.getMimetype(), src);
+            /* add the metadata */
+            if (f.getTechnical() != null) {
+                sparql.append(addMetadata(session, f.getTechnical(),
+                        filePath + "/TECHNICAL"));
+            }
 
-                /* add the metadata */
-                if (f.getTechnical() != null) {
-                    sparql.append(addMetadata(session, f.getTechnical(),
-                            filePath + "/TECHNICAL"));
+            /* add all bitstreams as child objects */
+            if (f.getBitStreams() != null) {
+                sparql.append(addBitStreams(session, f.getBitStreams(),
+                        filePath));
+            }
+
+            sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
+                    "> <http://scapeproject.eu/model#hasType> \"file\"} WHERE {};");
+            sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
+                    "> <http://scapeproject.eu/model#hasFileName> \"" +
+                    f.getFilename() + "\"} WHERE {};");
+            sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
+                    "> <http://scapeproject.eu/model#hasMimeType> \"" +
+                    f.getMimetype() + "\"} WHERE {};");
+            sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
+                    "> <http://scapeproject.eu/model#hasIngestSource> \"" +
+                    f.getUri() + "\"} WHERE {};");
+            sparql.append("INSERT {<info:fedora/" +
+                    repPath +
+                    "> <http://scapeproject.eu/model#hasFile> <info:fedora/" +
+                    fileObject.getPath() + ">} WHERE {};");
+
+            if (this.referencedContent) {
+            	/* only write a reference to the file URI as a node property */
+                sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
+                        "> <http://scapeproject.eu/model#hasReferencedContent> \"" +
+                        fileUri + "\"} WHERE {};");
+            }else {
+            	/* load the actual binary data into the repo */ 
+                LOG.info("reding binary from " + fileUri.toASCIIString());
+                try (final InputStream src = fileUri.toURL().openStream()) {
+                    final Node fileDs =
+                            this.datastreamService.createDatastreamNode(session,
+                                    filePath + "/DATA", f.getMimetype(), src);
+                } catch (IOException | InvalidChecksumException e) {
+                	throw new RepositoryException(e);
                 }
-
-                /* add all bitstreams as child objects */
-                if (f.getBitStreams() != null) {
-                    sparql.append(addBitStreams(session, f.getBitStreams(),
-                            filePath));
-                }
-
-                sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
-                        "> <http://scapeproject.eu/model#hasType> \"file\"} WHERE {};");
-                sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
-                        "> <http://scapeproject.eu/model#hasFileName> \"" +
-                        f.getFilename() + "\"} WHERE {};");
-                sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
-                        "> <http://scapeproject.eu/model#hasMimeType> \"" +
-                        f.getMimetype() + "\"} WHERE {};");
-                sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
-                        "> <http://scapeproject.eu/model#hasIngestSource> \"" +
-                        f.getUri() + "\"} WHERE {};");
-                sparql.append("INSERT {<info:fedora/" +
-                        repPath +
-                        "> <http://scapeproject.eu/model#hasFile> <info:fedora/" +
-                        fileObject.getPath() + ">} WHERE {};");
-
-            } catch (IOException e) {
-                throw new RepositoryException(e);
-            } catch (InvalidChecksumException e) {
-                throw new RepositoryException(e);
             }
         }
 
