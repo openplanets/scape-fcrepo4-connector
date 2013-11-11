@@ -33,7 +33,7 @@ import javax.ws.rs.core.StreamingOutput;
 import javax.xml.bind.JAXBException;
 
 import org.apache.commons.io.IOUtils;
-import org.fcrepo.http.commons.session.InjectedSession;
+import org.fcrepo.session.InjectedSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
