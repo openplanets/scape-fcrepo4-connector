@@ -45,14 +45,16 @@ import javax.jcr.query.qom.QueryObjectModelFactory;
 import javax.jcr.query.qom.Source;
 import javax.xml.bind.JAXBException;
 
-import org.fcrepo.Datastream;
-import org.fcrepo.FedoraObject;
-import org.fcrepo.exception.InvalidChecksumException;
-import org.fcrepo.rdf.SerializationUtils;
-import org.fcrepo.services.DatastreamService;
-import org.fcrepo.services.NodeService;
-import org.fcrepo.services.ObjectService;
-import org.fcrepo.session.SessionFactory;
+import org.fcrepo.http.commons.session.SessionFactory;
+import org.fcrepo.kernel.Datastream;
+import org.fcrepo.kernel.FedoraObject;
+import org.fcrepo.kernel.RdfLexicon;
+import org.fcrepo.kernel.exception.InvalidChecksumException;
+import org.fcrepo.kernel.rdf.SerializationUtils;
+import org.fcrepo.kernel.rdf.impl.DefaultGraphSubjects;
+import org.fcrepo.kernel.services.DatastreamService;
+import org.fcrepo.kernel.services.NodeService;
+import org.fcrepo.kernel.services.ObjectService;
 import org.purl.dc.elements._1.ElementContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +70,6 @@ import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 import edu.harvard.hul.ois.xml.ns.fits.fits_output.Fits;
-import eu.scape_project.util.ContentTypeInputStream;
 import eu.scape_project.model.BitStream;
 import eu.scape_project.model.File;
 import eu.scape_project.model.Identifier;
@@ -78,6 +79,7 @@ import eu.scape_project.model.LifecycleState;
 import eu.scape_project.model.LifecycleState.State;
 import eu.scape_project.model.Representation;
 import eu.scape_project.model.VersionList;
+import eu.scape_project.util.ContentTypeInputStream;
 import eu.scape_project.util.ScapeMarshaller;
 import gov.loc.audiomd.AudioType;
 import gov.loc.marc21.slim.RecordType;
@@ -98,7 +100,7 @@ public class ConnectorService {
     public final static String QUEUE_NODE = "/objects/scape/queue";
 
     public String fedoraUrl;
-    
+
     public boolean referencedContent;
 
     private final ScapeMarshaller marshaller;
@@ -130,19 +132,19 @@ public class ConnectorService {
             tempDirectory.mkdir();
         }
     }
-    
+
     public String getFedoraUrl() {
 		return fedoraUrl;
 	}
-    
+
     public void setFedoraUrl(String fedoraUrl) {
         this.fedoraUrl = fedoraUrl;
     }
-    
+
     public boolean isReferencedContent() {
 		return referencedContent;
 	}
-    
+
     public void setReferencedContent(boolean referencedContent) {
 		this.referencedContent = referencedContent;
 	}
@@ -165,7 +167,8 @@ public class ConnectorService {
                 this.objectService.getObject(session, entityPath);
         final Model entityModel =
                 SerializationUtils.unifyDatasetModel(ieObject
-                        .getPropertiesDataset());
+                        .getPropertiesDataset(new DefaultGraphSubjects(session)));
+        entityModel.write(System.out);
         String versionPath;
         if (versionNumber != null) {
             versionPath = entityPath + "/version-" + versionNumber;
@@ -177,14 +180,14 @@ public class ConnectorService {
                 this.objectService.getObject(session, versionPath);
         final Model versionModel =
                 SerializationUtils.unifyDatasetModel(versionObject
-                        .getPropertiesDataset());
+                        .getPropertiesDataset(new DefaultGraphSubjects(session)));
 
         /* fetch the ie's metadata form the repo */
         ie.descriptive(fetchMetadata(session, versionPath + "/DESCRIPTIVE"));
 
         /* find all the representations of this entity */
         final Resource versionResource =
-                versionModel.createResource("info:fedora" + versionPath);
+                versionModel.createResource(RdfLexicon.RESTAPI_NAMESPACE + versionPath);
         final List<Representation> reps = new ArrayList<>();
         for (String repUri : getLiteralStrings(versionModel, versionResource,
                 "http://scapeproject.eu/model#hasRepresentation")) {
@@ -194,7 +197,7 @@ public class ConnectorService {
 
         /* fetch the lifecycle state */
         final Resource entityResource =
-                versionModel.createResource("info:fedora" + entityPath);
+                versionModel.createResource(RdfLexicon.RESTAPI_NAMESPACE + entityPath);
         final String state =
                 getFirstLiteralString(entityModel, entityResource,
                         "http://scapeproject.eu/model#hasLifeCycleState");
@@ -210,9 +213,16 @@ public class ConnectorService {
     private String getCurrentVersionPath(Model entityModel, String entityPath)
             throws RepositoryException {
         final Resource parent =
-                entityModel.createResource("info:fedora" + entityPath);
-        return getFirstLiteralString(entityModel, parent,
-                "http://scapeproject.eu/model#currentVersion").substring(11);
+                entityModel.createResource(RdfLexicon.RESTAPI_NAMESPACE + entityPath);
+        String uri = getResourceFromModel(entityModel, parent, "http://scapeproject.eu/model#currentVersion");
+        return uri.substring(RdfLexicon.RESTAPI_NAMESPACE.length());
+    }
+
+    private String getResourceFromModel(Model model, Resource parent,
+            String propertyName) {
+        StmtIterator it = model.listStatements(parent, model.createProperty(propertyName), (RDFNode) null);
+        String uri = it.next().getResource().getURI();
+        return uri;
     }
 
     public BitStream fetchBitStream(final Session session, final String bsUri)
@@ -235,7 +245,7 @@ public class ConnectorService {
                     this.objectService.getObject(session, entityPath);
             final Model entityModel =
                     SerializationUtils.unifyDatasetModel(fo
-                            .getPropertiesDataset());
+                            .getPropertiesDataset(new DefaultGraphSubjects(session)));
             dsPath =
                     this.getCurrentVersionPath(entityModel, entityPath) + "/" +
                             repId + "/" + fileId + "/DATA";
@@ -245,7 +255,7 @@ public class ConnectorService {
                             versionId;
             dsPath = entityPath + "/" + repId + "/" + fileId + "/DATA";
         }
-        
+
         final Datastream ds =
                 this.datastreamService.getDatastream(session, dsPath);
 
@@ -259,9 +269,9 @@ public class ConnectorService {
                 this.objectService.getObject(session, fileUri);
         final Model fileModel =
                 SerializationUtils.unifyDatasetModel(fileObject
-                        .getPropertiesDataset());
+                        .getPropertiesDataset(new DefaultGraphSubjects(session)));
         final Resource parent =
-                fileModel.createResource("info:fedora" + fileObject.getPath());
+                fileModel.createResource(RdfLexicon.RESTAPI_NAMESPACE + fileObject.getPath());
 
         /* fetch and add the properties and metadata from the repo */
         f.technical(fetchMetadata(session, fileUri + "/TECHNICAL"));
@@ -300,7 +310,7 @@ public class ConnectorService {
 
         StringBuilder versionPath = new StringBuilder();
         versionPath.append(this.getCurrentVersionPath(SerializationUtils
-                .unifyDatasetModel(entityObject.getPropertiesDataset()),
+                .unifyDatasetModel(entityObject.getPropertiesDataset(new DefaultGraphSubjects(session))),
                 entityPath));
         for (int i = 1; i < ids.length; i++) {
             versionPath.append("/");
@@ -342,9 +352,9 @@ public class ConnectorService {
                 this.objectService.getObject(session, repPath);
         final Model repModel =
                 SerializationUtils.unifyDatasetModel(repObject
-                        .getPropertiesDataset());
+                        .getPropertiesDataset(new DefaultGraphSubjects(session)));
         final Resource parent =
-                repModel.createResource("info:fedora" + repObject.getPath());
+                repModel.createResource(RdfLexicon.RESTAPI_NAMESPACE + repObject.getPath());
 
         /* find the title and id */
         rep.identifier(new Identifier(repPath.substring(repPath
@@ -381,7 +391,7 @@ public class ConnectorService {
                     this.objectService.getObject(session, entityPath);
             final Model entityModel =
                     SerializationUtils.unifyDatasetModel(fo
-                            .getPropertiesDataset());
+                            .getPropertiesDataset(new DefaultGraphSubjects(session)));
             repPath =
                     this.getCurrentVersionPath(entityModel, entityPath) + "/" +
                             repId;
@@ -402,9 +412,9 @@ public class ConnectorService {
                 this.objectService.getObject(session, entityPath);
         final Model model =
                 SerializationUtils.unifyDatasetModel(entityObject
-                        .getPropertiesDataset());
+                        .getPropertiesDataset(new DefaultGraphSubjects(session)));
         final Resource subject =
-                model.createResource("info:fedora" + entityPath);
+                model.createResource(RdfLexicon.RESTAPI_NAMESPACE + entityPath);
         return new VersionList(entityId, getLiteralStrings(model, subject,
                 "http://scapeproject.eu/model#hasVersion"));
     }
@@ -459,26 +469,26 @@ public class ConnectorService {
                     versionPath));
 
             /* update the intellectual entity's properties */
-            sparql.append("INSERT {<info:fedora/" + entityPath +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" + entityPath +
                     "> <http://scapeproject.eu/model#hasLifeCycleState> \"" +
                     LifecycleState.State.INGESTED + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
                     entityPath +
                     "> <http://scapeproject.eu/model#hasLifeCycleStateDetails> \"successfully ingested at " +
                     new Date().getTime() + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" + entityPath +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" + entityPath +
                     "> <http://scapeproject.eu/model#hasType> \"intellectualentity\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
                     entityPath +
-                    "> <http://scapeproject.eu/model#hasVersion> \"info:fedora/" +
-                    versionPath + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" +
+                    "> <http://scapeproject.eu/model#hasVersion> <" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
+                    versionPath + ">} WHERE {};");
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
                     entityPath +
-                    "> <http://scapeproject.eu/model#currentVersion>  \"info:fedora/" +
-                    versionPath + "\"} WHERE {};");
-
+                    "> <http://scapeproject.eu/model#currentVersion>  <" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
+                    versionPath + "> } WHERE {};");
+            System.out.println(sparql.toString());
             /* update the object and it's child's using sparql */
-            entityObject.updatePropertiesDataset(sparql.toString());
+            entityObject.updatePropertiesDataset(new DefaultGraphSubjects(session), sparql.toString());
 
             /* save the changes made to the objects */
             session.save();
@@ -509,14 +519,14 @@ public class ConnectorService {
                         "/TECHNICAL"));
             }
 
-            sparql.append("INSERT {<info:fedora/" + bsObject.getPath() +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + bsObject.getPath() +
                     "> <http://scapeproject.eu/model#hasType> \"bitstream\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" + bsObject.getPath() +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + bsObject.getPath() +
                     "> <http://scapeproject.eu/model#hasBitstreamType> \"" +
                     bs.getType() + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
                     filePath +
-                    "> <http://scapeproject.eu/model#hasBitStream> <info:fedora/" +
+                    "> <http://scapeproject.eu/model#hasBitStream> <" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
                     bsObject.getPath() + ">} WHERE {};");
         }
 
@@ -556,29 +566,29 @@ public class ConnectorService {
                         filePath));
             }
 
-            sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + fileObject.getPath() +
                     "> <http://scapeproject.eu/model#hasType> \"file\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + fileObject.getPath() +
                     "> <http://scapeproject.eu/model#hasFileName> \"" +
                     f.getFilename() + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + fileObject.getPath() +
                     "> <http://scapeproject.eu/model#hasMimeType> \"" +
                     f.getMimetype() + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + fileObject.getPath() +
                     "> <http://scapeproject.eu/model#hasIngestSource> \"" +
                     f.getUri() + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
                     repPath +
-                    "> <http://scapeproject.eu/model#hasFile> <info:fedora/" +
+                    "> <http://scapeproject.eu/model#hasFile> <" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
                     fileObject.getPath() + ">} WHERE {};");
 
             if (this.referencedContent) {
             	/* only write a reference to the file URI as a node property */
-                sparql.append("INSERT {<info:fedora/" + fileObject.getPath() +
+                sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" + fileObject.getPath() +
                         "> <http://scapeproject.eu/model#hasReferencedContent> \"" +
                         fileUri + "\"} WHERE {};");
             }else {
-            	/* load the actual binary data into the repo */ 
+            	/* load the actual binary data into the repo */
                 LOG.info("reding binary from " + fileUri.toASCIIString());
                 try (final InputStream src = fileUri.toURL().openStream()) {
                     final Node fileDs =
@@ -660,10 +670,10 @@ public class ConnectorService {
             }
 
             /* add a sparql query to set the type of this object */
-            sparql.append("INSERT {<info:fedora/" + desc.getPath() +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE  + desc.getPath() +
                     "> <http://scapeproject.eu/model#hasType> \"" + type +
                     "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" + desc.getPath() +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE  + desc.getPath() +
                     "> <http://scapeproject.eu/model#hasSchema> \"" + schema +
                     "\"} WHERE {};");
 
@@ -713,14 +723,14 @@ public class ConnectorService {
             sparql.append(addFiles(session, rep.getFiles(), repPath));
 
             /* add a sparql query to set the type of this object */
-            sparql.append("INSERT {<info:fedora" + repObject.getPath() +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + repObject.getPath() +
                     "> <http://scapeproject.eu/model#hasType> \"representation\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora" + repObject.getPath() +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + repObject.getPath() +
                     "> <http://scapeproject.eu/model#hasTitle> \"" +
                     rep.getTitle() + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora/" +
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
                     versionPath +
-                    "> <http://scapeproject.eu/model#hasRepresentation> <info:fedora" +
+                    "> <http://scapeproject.eu/model#hasRepresentation> <" + RdfLexicon.RESTAPI_NAMESPACE +
                     repObject.getPath() + ">} WHERE {};");
 
         }
@@ -736,7 +746,7 @@ public class ConnectorService {
         final String oldVersionPath =
                 getCurrentVersionPath(
                         SerializationUtils.unifyDatasetModel(entityObject
-                                .getPropertiesDataset()), entityPath);
+                                .getPropertiesDataset(new DefaultGraphSubjects(session))), entityPath);
         int versionNumber =
                 Integer.parseInt(oldVersionPath.substring(oldVersionPath
                         .lastIndexOf('-') + 1)) + 1;
@@ -761,21 +771,21 @@ public class ConnectorService {
             sparql.append(addRepresentations(session, ie.getRepresentations(),
                     newVersionPath));
 
-            sparql.append("DELETE {<info:fedora" +
+            sparql.append("DELETE {<" + RdfLexicon.RESTAPI_NAMESPACE +
                     entityPath +
-                    "> <http://scapeproject.eu/model#currentVersion> \"info:fedora" +
-                    oldVersionPath + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora" +
+                    "> <http://scapeproject.eu/model#currentVersion> <" + RdfLexicon.RESTAPI_NAMESPACE +
+                    oldVersionPath + ">} WHERE {};");
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE +
                     entityPath +
-                    "> <http://scapeproject.eu/model#hasVersion> \"info:fedora" +
-                    newVersionPath + "\"} WHERE {};");
-            sparql.append("INSERT {<info:fedora" +
+                    "> <http://scapeproject.eu/model#hasVersion> <" + RdfLexicon.RESTAPI_NAMESPACE +
+                    newVersionPath + ">} WHERE {};");
+            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE +
                     entityPath +
-                    "> <http://scapeproject.eu/model#currentVersion>  \"info:fedora" +
-                    newVersionPath + "\"} WHERE {};");
+                    "> <http://scapeproject.eu/model#currentVersion>  <" + RdfLexicon.RESTAPI_NAMESPACE +
+                    newVersionPath + ">} WHERE {};");
 
             /* update the object and it's child's using sparql */
-            entityObject.updatePropertiesDataset(sparql.toString());
+            entityObject.updatePropertiesDataset(new DefaultGraphSubjects(session), sparql.toString());
 
             /* save the changes made to the objects */
             session.save();
@@ -1063,10 +1073,10 @@ public class ConnectorService {
                             "text/xml", src);
             /* update the ingest queue */
             final String sparql =
-                    "INSERT {<info:fedora/" + QUEUE_NODE +
+                    "INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" + QUEUE_NODE +
                             "> <http://scapeproject.eu/model#hasItem> \"" +
                             item.getPath() + "\"} WHERE {}";
-            queue.updatePropertiesDataset(sparql);
+            queue.updatePropertiesDataset(new DefaultGraphSubjects(session), sparql);
             session.save();
             return item.getPath().substring(QUEUE_NODE.length() + 1);
         } catch (IOException e) {
@@ -1084,9 +1094,9 @@ public class ConnectorService {
                 this.objectService.getObject(session, QUEUE_NODE);
         final Model queueModel =
                 SerializationUtils.unifyDatasetModel(queueObject
-                        .getPropertiesDataset());
+                        .getPropertiesDataset(new DefaultGraphSubjects(session)));
         final Resource parent =
-                queueModel.createResource("info:fedora" +
+                queueModel.createResource(RdfLexicon.RESTAPI_NAMESPACE +
                         queueObject.getPath());
         final List<String> asyncIds =
                 this.getLiteralStrings(queueModel, parent,
@@ -1104,9 +1114,9 @@ public class ConnectorService {
                             "/" + entityId);
             final Model entityModel =
                     SerializationUtils.unifyDatasetModel(entityObject
-                            .getPropertiesDataset());
+                            .getPropertiesDataset(new DefaultGraphSubjects(session)));
             final Resource subject =
-                    entityModel.createResource("info:fedora" +
+                    entityModel.createResource(RdfLexicon.RESTAPI_NAMESPACE +
                             entityObject.getPath());
             final String state =
                     this.getFirstLiteralString(entityModel, subject,
@@ -1125,7 +1135,7 @@ public class ConnectorService {
 
     @Scheduled(fixedDelay = 1000, initialDelay = 5000)
     public void ingestFromQueue() throws RepositoryException {
-        final Session session = sessionFactory.getSession();
+        final Session session = sessionFactory.getInternalSession();
         if (!this.objectService.exists(session, QUEUE_NODE)) {
             return;
         }
@@ -1146,10 +1156,10 @@ public class ConnectorService {
         final FedoraObject queueObject =
                 this.objectService.getObject(session, QUEUE_NODE);
         final String sparql =
-                "DELETE {<info:fedora/" + QUEUE_NODE +
+                "DELETE {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" + QUEUE_NODE +
                         "> <http://scapeproject.eu/model#hasItem> \"" + item +
                         "\"} WHERE {}";
-        queueObject.updatePropertiesDataset(sparql);
+        queueObject.updatePropertiesDataset(new DefaultGraphSubjects(session), sparql);
         this.nodeService.deleteObject(session, item);
         session.save();
     }
@@ -1160,10 +1170,10 @@ public class ConnectorService {
                 this.objectService.getObject(session, QUEUE_NODE);
         final Model queueModel =
                 SerializationUtils.unifyDatasetModel(queueObject
-                        .getPropertiesDataset());
+                        .getPropertiesDataset(new DefaultGraphSubjects(session)));
         final Resource parent =
                 queueModel
-                        .createResource("info:fedora" + queueObject.getPath());
+                        .createResource(RdfLexicon.RESTAPI_NAMESPACE + queueObject.getPath());
         return this.getLiteralStrings(queueModel, parent,
                 "http://scapeproject.eu/model#hasItem");
     }
