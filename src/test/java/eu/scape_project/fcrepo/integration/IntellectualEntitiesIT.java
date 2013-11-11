@@ -22,11 +22,8 @@ import info.lc.xmlns.textmd_v3.TextMD;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
-
-import javax.xml.bind.JAXBException;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -35,10 +32,7 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
-import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.purl.dc.elements._1.ElementContainer;
@@ -60,7 +54,6 @@ import eu.scape_project.model.LifecycleState.State;
 import eu.scape_project.model.Representation;
 import eu.scape_project.model.TestUtil;
 import eu.scape_project.model.VersionList;
-import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * @author frank asseg

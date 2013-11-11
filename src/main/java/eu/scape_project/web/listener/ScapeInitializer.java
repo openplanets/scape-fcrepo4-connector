@@ -21,10 +21,10 @@ import javax.jcr.nodetype.NodeTypeManager;
 import javax.jcr.nodetype.NodeTypeTemplate;
 import javax.ws.rs.ext.Provider;
 
-import org.fcrepo.RdfLexicon;
-import org.fcrepo.services.NodeService;
-import org.fcrepo.services.ObjectService;
-import org.fcrepo.session.SessionFactory;
+import org.fcrepo.http.commons.session.SessionFactory;
+import org.fcrepo.kernel.RdfLexicon;
+import org.fcrepo.kernel.services.NodeService;
+import org.fcrepo.kernel.services.ObjectService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,7 +67,7 @@ public class ScapeInitializer implements AbstractResourceModelListener {
     @Override
     public void onLoaded(AbstractResourceModelContext modelContext) {
         try {
-            final Session session = this.sessionFactory.getSession();
+            final Session session = this.sessionFactory.getInternalSession();
             /* make sure that the scape namespace is available in fcrepo */
             final Dataset namespace =
                     this.nodeService.getNamespaceRegistryGraph(session);
@@ -91,15 +91,14 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             final NodeTypeTemplate entityType = mgr.createNodeTypeTemplate();
             entityType.setName("scape:intellectual-entity");
             entityType.setDeclaredSuperTypeNames(new String[] {
-                    "fedora:resource", "nt:folder", "fedora:object"});
+                    "fedora:resource", "fedora:object"});
             entityType.setMixin(true);
             entityType.setQueryable(true);
             entityType.setAbstract(false);
 
             final NodeTypeTemplate repType = mgr.createNodeTypeTemplate();
             repType.setName("scape:representation");
-            repType.setDeclaredSuperTypeNames(new String[] {"fedora:resource",
-                    "nt:folder", "fedora:object"});
+            repType.setDeclaredSuperTypeNames(new String[] {"fedora:resource", "fedora:object"});
             repType.setMixin(true);
             repType.setQueryable(true);
             repType.setAbstract(false);
@@ -107,7 +106,7 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             final NodeTypeTemplate fileType = mgr.createNodeTypeTemplate();
             fileType.setName("scape:file");
             fileType.setDeclaredSuperTypeNames(new String[] {"fedora:resource",
-                    "nt:folder", "fedora:object"});
+                    "fedora:object"});
             fileType.setMixin(true);
             fileType.setQueryable(true);
             fileType.setAbstract(false);
