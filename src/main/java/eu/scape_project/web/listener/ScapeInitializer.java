@@ -100,7 +100,8 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             entityType.setMixin(true);
             entityType.setQueryable(true);
             entityType.setAbstract(false);
-            entityType.getPropertyDefinitionTemplates().add(createPropertyDefTemplate(session, mgr));
+            entityType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasRepresentation"));
+            entityType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasVersion"));
 
 
             final NodeTypeTemplate repType = mgr.createNodeTypeTemplate();
@@ -128,9 +129,9 @@ public class ScapeInitializer implements AbstractResourceModelListener {
 
     }
 
-    private PropertyDefinitionTemplate createPropertyDefTemplate(final Session session, final NodeTypeManager mgr) throws UnsupportedRepositoryOperationException, RepositoryException {
+    private PropertyDefinitionTemplate createMultiPropertyDefTemplate(final Session session, final NodeTypeManager mgr, final String name) throws UnsupportedRepositoryOperationException, RepositoryException {
         PropertyDefinitionTemplate propDefn = mgr.createPropertyDefinitionTemplate();
-        propDefn.setName("scape:hasRepresentation");
+        propDefn.setName(name);
         propDefn.setRequiredType(PropertyType.STRING);
         ValueFactory valueFactory = session.getValueFactory();
         propDefn.setMultiple(true);
