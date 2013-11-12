@@ -15,6 +15,7 @@
 
 package eu.scape_project.service;
 
+import static org.fcrepo.kernel.RdfLexicon.RESTAPI_NAMESPACE;
 import info.lc.xmlns.premis_v2.PremisComplexType;
 import info.lc.xmlns.premis_v2.RightsComplexType;
 import info.lc.xmlns.textmd_v3.TextMD;
@@ -48,7 +49,6 @@ import javax.xml.bind.JAXBException;
 import org.fcrepo.http.commons.session.SessionFactory;
 import org.fcrepo.kernel.Datastream;
 import org.fcrepo.kernel.FedoraObject;
-import org.fcrepo.kernel.RdfLexicon;
 import org.fcrepo.kernel.exception.InvalidChecksumException;
 import org.fcrepo.kernel.rdf.SerializationUtils;
 import org.fcrepo.kernel.rdf.impl.DefaultGraphSubjects;
@@ -63,6 +63,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.google.books.gbs.GbsType;
+import com.hp.hpl.jena.query.Dataset;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.RDFNode;
@@ -165,9 +166,9 @@ public class ConnectorService {
         final String entityPath = "/" + ENTITY_FOLDER + "/" + id;
         final FedoraObject ieObject =
                 this.objectService.getObject(session, entityPath);
+        final Dataset ds= ieObject.getPropertiesDataset(new DefaultGraphSubjects(session));
         final Model entityModel =
-                SerializationUtils.unifyDatasetModel(ieObject
-                        .getPropertiesDataset(new DefaultGraphSubjects(session)));
+                SerializationUtils.unifyDatasetModel(ds);
         entityModel.write(System.out);
         String versionPath;
         if (versionNumber != null) {
@@ -187,17 +188,17 @@ public class ConnectorService {
 
         /* find all the representations of this entity */
         final Resource versionResource =
-                versionModel.createResource(RdfLexicon.RESTAPI_NAMESPACE + versionPath);
+                versionModel.createResource(RESTAPI_NAMESPACE + versionPath);
         final List<Representation> reps = new ArrayList<>();
         for (String repUri : getLiteralStrings(versionModel, versionResource,
                 "http://scapeproject.eu/model#hasRepresentation")) {
-            reps.add(fetchRepresentation(session, repUri.substring(11)));
+            reps.add(fetchRepresentation(session, repUri.substring(RESTAPI_NAMESPACE.length())));
         }
         ie.representations(reps);
 
         /* fetch the lifecycle state */
         final Resource entityResource =
-                versionModel.createResource(RdfLexicon.RESTAPI_NAMESPACE + entityPath);
+                versionModel.createResource(RESTAPI_NAMESPACE + entityPath);
         final String state =
                 getFirstLiteralString(entityModel, entityResource,
                         "http://scapeproject.eu/model#hasLifeCycleState");
@@ -213,9 +214,9 @@ public class ConnectorService {
     private String getCurrentVersionPath(Model entityModel, String entityPath)
             throws RepositoryException {
         final Resource parent =
-                entityModel.createResource(RdfLexicon.RESTAPI_NAMESPACE + entityPath);
+                entityModel.createResource(RESTAPI_NAMESPACE + entityPath);
         String uri = getResourceFromModel(entityModel, parent, "http://scapeproject.eu/model#currentVersion");
-        return uri.substring(RdfLexicon.RESTAPI_NAMESPACE.length());
+        return uri.substring(RESTAPI_NAMESPACE.length());
     }
 
     private String getResourceFromModel(Model model, Resource parent,
@@ -271,7 +272,7 @@ public class ConnectorService {
                 SerializationUtils.unifyDatasetModel(fileObject
                         .getPropertiesDataset(new DefaultGraphSubjects(session)));
         final Resource parent =
-                fileModel.createResource(RdfLexicon.RESTAPI_NAMESPACE + fileObject.getPath());
+                fileModel.createResource(RESTAPI_NAMESPACE + fileObject.getPath());
 
         /* fetch and add the properties and metadata from the repo */
         f.technical(fetchMetadata(session, fileUri + "/TECHNICAL"));
@@ -292,7 +293,7 @@ public class ConnectorService {
         final List<BitStream> streams = new ArrayList<>();
         for (String bsUri : getLiteralStrings(fileModel, parent,
                 "http://scapeproject.eu/model#hasBitStream")) {
-            streams.add(fetchBitStream(session, bsUri.substring(11)));
+            streams.add(fetchBitStream(session, bsUri.substring(RESTAPI_NAMESPACE.length())));
         }
         f.bitStreams(streams);
 
@@ -354,7 +355,7 @@ public class ConnectorService {
                 SerializationUtils.unifyDatasetModel(repObject
                         .getPropertiesDataset(new DefaultGraphSubjects(session)));
         final Resource parent =
-                repModel.createResource(RdfLexicon.RESTAPI_NAMESPACE + repObject.getPath());
+                repModel.createResource(RESTAPI_NAMESPACE + repObject.getPath());
 
         /* find the title and id */
         rep.identifier(new Identifier(repPath.substring(repPath
@@ -373,7 +374,7 @@ public class ConnectorService {
         final List<File> files = new ArrayList<>();
         for (String fileUri : getLiteralStrings(repModel, parent,
                 "http://scapeproject.eu/model#hasFile")) {
-            files.add(fetchFile(session, fileUri.substring(12)));
+            files.add(fetchFile(session, fileUri.substring(RESTAPI_NAMESPACE.length())));
         }
 
         rep.files(files);
@@ -414,7 +415,7 @@ public class ConnectorService {
                 SerializationUtils.unifyDatasetModel(entityObject
                         .getPropertiesDataset(new DefaultGraphSubjects(session)));
         final Resource subject =
-                model.createResource(RdfLexicon.RESTAPI_NAMESPACE + entityPath);
+                model.createResource(RESTAPI_NAMESPACE + entityPath);
         return new VersionList(entityId, getLiteralStrings(model, subject,
                 "http://scapeproject.eu/model#hasVersion"));
     }
@@ -457,6 +458,7 @@ public class ConnectorService {
 
             final FedoraObject versionObject =
                     objectService.createObject(session, versionPath);
+            versionObject.getNode().addMixin("scape:intellectual-entity");
 
             /* add the metadata datastream for descriptive metadata */
             if (ie.getDescriptive() != null) {
@@ -469,30 +471,31 @@ public class ConnectorService {
                     versionPath));
 
             /* update the intellectual entity's properties */
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" + entityPath +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + "/" + entityPath +
                     "> <http://scapeproject.eu/model#hasLifeCycleState> \"" +
                     LifecycleState.State.INGESTED + "\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + "/" +
                     entityPath +
                     "> <http://scapeproject.eu/model#hasLifeCycleStateDetails> \"successfully ingested at " +
                     new Date().getTime() + "\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" + entityPath +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + "/" + entityPath +
                     "> <http://scapeproject.eu/model#hasType> \"intellectualentity\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + "/" +
                     entityPath +
-                    "> <http://scapeproject.eu/model#hasVersion> <" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
-                    versionPath + ">} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
+                    "> <http://scapeproject.eu/model#hasVersion> \"" + RESTAPI_NAMESPACE + "/" +
+                    versionPath + "\"} WHERE {};");
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + "/" +
                     entityPath +
-                    "> <http://scapeproject.eu/model#currentVersion>  <" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
+                    "> <http://scapeproject.eu/model#currentVersion>  <" + RESTAPI_NAMESPACE + "/" +
                     versionPath + "> } WHERE {};");
+
             System.out.println(sparql.toString());
             /* update the object and it's child's using sparql */
             entityObject.updatePropertiesDataset(new DefaultGraphSubjects(session), sparql.toString());
 
+
             /* save the changes made to the objects */
             session.save();
-
             return entityId;
 
         } catch (JAXBException e) {
@@ -519,15 +522,15 @@ public class ConnectorService {
                         "/TECHNICAL"));
             }
 
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + bsObject.getPath() +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + bsObject.getPath() +
                     "> <http://scapeproject.eu/model#hasType> \"bitstream\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + bsObject.getPath() +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + bsObject.getPath() +
                     "> <http://scapeproject.eu/model#hasBitstreamType> \"" +
                     bs.getType() + "\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + "/" +
                     filePath +
-                    "> <http://scapeproject.eu/model#hasBitStream> <" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
-                    bsObject.getPath() + ">} WHERE {};");
+                    "> <http://scapeproject.eu/model#hasBitStream> \"" + RESTAPI_NAMESPACE + "/" +
+                    bsObject.getPath() + "\"} WHERE {};");
         }
 
         return sparql.toString();
@@ -566,25 +569,25 @@ public class ConnectorService {
                         filePath));
             }
 
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + fileObject.getPath() +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + fileObject.getPath() +
                     "> <http://scapeproject.eu/model#hasType> \"file\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + fileObject.getPath() +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + fileObject.getPath() +
                     "> <http://scapeproject.eu/model#hasFileName> \"" +
                     f.getFilename() + "\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + fileObject.getPath() +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + fileObject.getPath() +
                     "> <http://scapeproject.eu/model#hasMimeType> \"" +
                     f.getMimetype() + "\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + fileObject.getPath() +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + fileObject.getPath() +
                     "> <http://scapeproject.eu/model#hasIngestSource> \"" +
                     f.getUri() + "\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + "/" +
                     repPath +
-                    "> <http://scapeproject.eu/model#hasFile> <" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
-                    fileObject.getPath() + ">} WHERE {};");
+                    "> <http://scapeproject.eu/model#hasFile> \"" + RESTAPI_NAMESPACE + "/" +
+                    fileObject.getPath() + "\"} WHERE {};");
 
             if (this.referencedContent) {
             	/* only write a reference to the file URI as a node property */
-                sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" + fileObject.getPath() +
+                sparql.append("INSERT {<" + RESTAPI_NAMESPACE + "/" + fileObject.getPath() +
                         "> <http://scapeproject.eu/model#hasReferencedContent> \"" +
                         fileUri + "\"} WHERE {};");
             }else {
@@ -670,10 +673,10 @@ public class ConnectorService {
             }
 
             /* add a sparql query to set the type of this object */
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE  + desc.getPath() +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE  + desc.getPath() +
                     "> <http://scapeproject.eu/model#hasType> \"" + type +
                     "\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE  + desc.getPath() +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE  + desc.getPath() +
                     "> <http://scapeproject.eu/model#hasSchema> \"" + schema +
                     "\"} WHERE {};");
 
@@ -723,15 +726,15 @@ public class ConnectorService {
             sparql.append(addFiles(session, rep.getFiles(), repPath));
 
             /* add a sparql query to set the type of this object */
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + repObject.getPath() +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + repObject.getPath() +
                     "> <http://scapeproject.eu/model#hasType> \"representation\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + repObject.getPath() +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + repObject.getPath() +
                     "> <http://scapeproject.eu/model#hasTitle> \"" +
                     rep.getTitle() + "\"} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE + "/" +
                     versionPath +
-                    "> <http://scapeproject.eu/model#hasRepresentation> <" + RdfLexicon.RESTAPI_NAMESPACE +
-                    repObject.getPath() + ">} WHERE {};");
+                    "> <http://scapeproject.eu/model#hasRepresentation> \"" + RESTAPI_NAMESPACE +
+                    repObject.getPath() + "\"} WHERE {};");
 
         }
         return sparql.toString();
@@ -771,17 +774,17 @@ public class ConnectorService {
             sparql.append(addRepresentations(session, ie.getRepresentations(),
                     newVersionPath));
 
-            sparql.append("DELETE {<" + RdfLexicon.RESTAPI_NAMESPACE +
+            sparql.append("DELETE {<" + RESTAPI_NAMESPACE +
                     entityPath +
-                    "> <http://scapeproject.eu/model#currentVersion> <" + RdfLexicon.RESTAPI_NAMESPACE +
+                    "> <http://scapeproject.eu/model#currentVersion> <" + RESTAPI_NAMESPACE +
                     oldVersionPath + ">} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE +
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE +
                     entityPath +
-                    "> <http://scapeproject.eu/model#hasVersion> <" + RdfLexicon.RESTAPI_NAMESPACE +
-                    newVersionPath + ">} WHERE {};");
-            sparql.append("INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE +
+                    "> <http://scapeproject.eu/model#hasVersion> \"" + RESTAPI_NAMESPACE +
+                    newVersionPath + "\"} WHERE {};");
+            sparql.append("INSERT {<" + RESTAPI_NAMESPACE +
                     entityPath +
-                    "> <http://scapeproject.eu/model#currentVersion>  <" + RdfLexicon.RESTAPI_NAMESPACE +
+                    "> <http://scapeproject.eu/model#currentVersion>  <" + RESTAPI_NAMESPACE +
                     newVersionPath + ">} WHERE {};");
 
             /* update the object and it's child's using sparql */
@@ -1046,7 +1049,7 @@ public class ConnectorService {
         final Property p = model.createProperty(propertyName);
         final StmtIterator it =
                 model.listStatements(subject, p, (RDFNode) null);
-        return it.next().getObject().toString();
+        return it.next().getLiteral().getString();
     }
 
     private List<String> getLiteralStrings(Model model, Resource subject,
@@ -1056,7 +1059,7 @@ public class ConnectorService {
         final StmtIterator it =
                 model.listStatements(subject, p, (RDFNode) null);
         while (it.hasNext()) {
-            result.add(it.next().getObject().toString());
+            result.add(it.next().getLiteral().getString());
         }
         return result;
     }
@@ -1073,7 +1076,7 @@ public class ConnectorService {
                             "text/xml", src);
             /* update the ingest queue */
             final String sparql =
-                    "INSERT {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" + QUEUE_NODE +
+                    "INSERT {<" + RESTAPI_NAMESPACE + "/" + QUEUE_NODE +
                             "> <http://scapeproject.eu/model#hasItem> \"" +
                             item.getPath() + "\"} WHERE {}";
             queue.updatePropertiesDataset(new DefaultGraphSubjects(session), sparql);
@@ -1096,7 +1099,7 @@ public class ConnectorService {
                 SerializationUtils.unifyDatasetModel(queueObject
                         .getPropertiesDataset(new DefaultGraphSubjects(session)));
         final Resource parent =
-                queueModel.createResource(RdfLexicon.RESTAPI_NAMESPACE +
+                queueModel.createResource(RESTAPI_NAMESPACE +
                         queueObject.getPath());
         final List<String> asyncIds =
                 this.getLiteralStrings(queueModel, parent,
@@ -1116,7 +1119,7 @@ public class ConnectorService {
                     SerializationUtils.unifyDatasetModel(entityObject
                             .getPropertiesDataset(new DefaultGraphSubjects(session)));
             final Resource subject =
-                    entityModel.createResource(RdfLexicon.RESTAPI_NAMESPACE +
+                    entityModel.createResource(RESTAPI_NAMESPACE +
                             entityObject.getPath());
             final String state =
                     this.getFirstLiteralString(entityModel, subject,
@@ -1156,7 +1159,7 @@ public class ConnectorService {
         final FedoraObject queueObject =
                 this.objectService.getObject(session, QUEUE_NODE);
         final String sparql =
-                "DELETE {<" + RdfLexicon.RESTAPI_NAMESPACE + "/" + QUEUE_NODE +
+                "DELETE {<" + RESTAPI_NAMESPACE + "/" + QUEUE_NODE +
                         "> <http://scapeproject.eu/model#hasItem> \"" + item +
                         "\"} WHERE {}";
         queueObject.updatePropertiesDataset(new DefaultGraphSubjects(session), sparql);
@@ -1173,7 +1176,7 @@ public class ConnectorService {
                         .getPropertiesDataset(new DefaultGraphSubjects(session)));
         final Resource parent =
                 queueModel
-                        .createResource(RdfLexicon.RESTAPI_NAMESPACE + queueObject.getPath());
+                        .createResource(RESTAPI_NAMESPACE + queueObject.getPath());
         return this.getLiteralStrings(queueModel, parent,
                 "http://scapeproject.eu/model#hasItem");
     }
