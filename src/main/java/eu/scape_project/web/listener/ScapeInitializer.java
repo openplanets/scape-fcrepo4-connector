@@ -39,6 +39,7 @@ import com.hp.hpl.jena.update.UpdateAction;
 import com.sun.jersey.api.model.AbstractResourceModelContext;
 import com.sun.jersey.api.model.AbstractResourceModelListener;
 
+import eu.scape_project.rdf.ScapeRDFVocabulary;
 import eu.scape_project.service.ConnectorService;
 
 /**
@@ -76,7 +77,7 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             final Dataset namespace =
                     this.nodeService.getNamespaceRegistryGraph(session);
             UpdateAction.parseExecute(
-                    "INSERT {<http://scapeproject.eu/model#> <" +
+                    "INSERT {<" + ScapeRDFVocabulary.SCAPE_NAMESPACE + "> <" +
                             RdfLexicon.HAS_NAMESPACE_PREFIX +
                             "> \"scape\"} WHERE {}", namespace);
 
