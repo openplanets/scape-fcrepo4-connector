@@ -29,8 +29,8 @@ In order to accommodate the use case of the ONB testbed ingest the following jav
 * _scape.onb.pairtree.basepath_ The base path where the files at ONB are located
 * _scape.onb.pairtree.encapsulated_ The encapsulated directory of the path
 ```Java
-JAVA_OPTS="$JAVA_OPTS -Dscape.onb.pairtree.basepath=/tmp/scape/onb \
--Dscape.onb.pairtree.encapsulated=onb"
+JAVA_OPTS="$JAVA_OPTS -Dscape.onb.pairtree.basepath=/tmp/scape/onb"
+JAVA_OPTS="$JAVA_OPTS -Dscape.onb.pairtree.encapsulated=onb"
 ```
 
 
