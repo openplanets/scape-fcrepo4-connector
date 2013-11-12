@@ -17,9 +17,4 @@
 
     <bean class="org.modeshape.jcr.JcrRepositoryFactory"/>
 
-    <bean class="org.fcrepo.kernel.services.ObjectService"/>
-    <bean class="org.fcrepo.kernel.services.LowLevelStorageService"/>
-    <bean class="org.fcrepo.kernel.services.DatastreamService"/>
-    <bean class="org.fcrepo.kernel.services.NodeService"/>
-    
 </beans>
