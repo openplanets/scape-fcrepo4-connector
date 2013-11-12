@@ -14,11 +14,15 @@
 
 package eu.scape_project.web.listener;
 
+import javax.jcr.PropertyType;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
+import javax.jcr.UnsupportedRepositoryOperationException;
+import javax.jcr.ValueFactory;
 import javax.jcr.nodetype.NodeTypeDefinition;
 import javax.jcr.nodetype.NodeTypeManager;
 import javax.jcr.nodetype.NodeTypeTemplate;
+import javax.jcr.nodetype.PropertyDefinitionTemplate;
 import javax.ws.rs.ext.Provider;
 
 import org.fcrepo.http.commons.session.SessionFactory;
@@ -95,6 +99,8 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             entityType.setMixin(true);
             entityType.setQueryable(true);
             entityType.setAbstract(false);
+            entityType.getPropertyDefinitionTemplates().add(createPropertyDefTemplate(session, mgr));
+
 
             final NodeTypeTemplate repType = mgr.createNodeTypeTemplate();
             repType.setName("scape:representation");
@@ -119,5 +125,16 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             throw new RuntimeException("Unable to setup scape on fedora");
         }
 
+    }
+
+    private PropertyDefinitionTemplate createPropertyDefTemplate(final Session session, final NodeTypeManager mgr) throws UnsupportedRepositoryOperationException, RepositoryException {
+        PropertyDefinitionTemplate propDefn = mgr.createPropertyDefinitionTemplate();
+        propDefn.setName("scape:hasRepresentation");
+        propDefn.setRequiredType(PropertyType.STRING);
+        ValueFactory valueFactory = session.getValueFactory();
+        propDefn.setMultiple(true);
+        propDefn.setFullTextSearchable(false);
+        propDefn.setQueryOrderable(false);
+        return propDefn;
     }
 }
