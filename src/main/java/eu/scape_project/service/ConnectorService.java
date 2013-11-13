@@ -474,7 +474,7 @@ public class ConnectorService {
 
             final FedoraObject versionObject =
                     objectService.createObject(session, versionPath);
-            versionObject.getNode().addMixin("scape:intellectual-entity");
+            versionObject.getNode().addMixin("scape:intellectual-entity-version");
 
             /* add the metadata datastream for descriptive metadata */
             if (ie.getDescriptive() != null) {
@@ -608,7 +608,7 @@ public class ConnectorService {
                         fileUri + "\"} WHERE {};");
             }else {
             	/* load the actual binary data into the repo */
-                LOG.info("reding binary from " + fileUri.toASCIIString());
+                LOG.info("reding binary from {}", fileUri.toASCIIString());
                 try (final InputStream src = fileUri.toURL().openStream()) {
                     final Node fileDs =
                             this.datastreamService.createDatastreamNode(session,

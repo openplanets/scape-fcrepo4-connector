@@ -104,6 +104,15 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             entityType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasVersion"));
 
 
+            final NodeTypeTemplate versionType = mgr.createNodeTypeTemplate();
+            versionType.setName("scape:intellectual-entity-version");
+            versionType.setDeclaredSuperTypeNames(new String[] {
+                    "fedora:resource", "fedora:object"});
+            versionType.setMixin(true);
+            versionType.setQueryable(true);
+            versionType.setAbstract(false);
+            versionType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasRepresentation"));
+
             final NodeTypeTemplate repType = mgr.createNodeTypeTemplate();
             repType.setName("scape:representation");
             repType.setDeclaredSuperTypeNames(new String[] {"fedora:resource", "fedora:object"});
@@ -120,7 +129,7 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             fileType.setAbstract(false);
 
             // and register them
-            mgr.registerNodeTypes(new NodeTypeDefinition[] {fileType,
+            mgr.registerNodeTypes(new NodeTypeDefinition[] {fileType, versionType,
                     entityType, repType}, true);
         } catch (RepositoryException e) {
             LOG.error("Error while setting up scape connector api", e);
