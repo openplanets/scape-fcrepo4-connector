@@ -185,7 +185,6 @@ public class ConnectorService {
         final Dataset ds= ieObject.getPropertiesDataset(new DefaultGraphSubjects(session));
         final Model entityModel =
                 SerializationUtils.unifyDatasetModel(ds);
-        entityModel.write(System.out);
         String versionPath;
         if (versionNumber != null) {
             versionPath = entityPath + "/version-" + versionNumber;
@@ -505,7 +504,6 @@ public class ConnectorService {
                     "> <" + HAS_CURRENT_VERSION + ">  <" + RESTAPI_NAMESPACE + "/" +
                     versionPath + "> } WHERE {};");
 
-            System.out.println(sparql.toString());
             /* update the object and it's child's using sparql */
             entityObject.updatePropertiesDataset(new DefaultGraphSubjects(session), sparql.toString());
 

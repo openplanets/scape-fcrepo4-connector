@@ -81,10 +81,6 @@ public class ScapeInitializer implements AbstractResourceModelListener {
                             RdfLexicon.HAS_NAMESPACE_PREFIX +
                             "> \"scape\"} WHERE {}", namespace);
 
-            /* make sure that the queue object exists for async ingests */
-            this.objectService.createObject(session,
-                    ConnectorService.QUEUE_NODE);
-            session.save();
 
             /* add the scape node mixin types */
 
@@ -119,6 +115,7 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             repType.setMixin(true);
             repType.setQueryable(true);
             repType.setAbstract(false);
+            repType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasFile"));
 
             final NodeTypeTemplate fileType = mgr.createNodeTypeTemplate();
             fileType.setName("scape:file");
@@ -127,10 +124,26 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             fileType.setMixin(true);
             fileType.setQueryable(true);
             fileType.setAbstract(false);
+            fileType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasBitstream"));
+
+
+            final NodeTypeTemplate queueType = mgr.createNodeTypeTemplate();
+            queueType.setName("scape:async-queue");
+            queueType.setDeclaredSuperTypeNames(new String[] {"fedora:resource",
+                    "fedora:object"});
+            queueType.setMixin(true);
+            queueType.setQueryable(true);
+            queueType.setAbstract(false);
+            queueType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasItem"));
 
             // and register them
             mgr.registerNodeTypes(new NodeTypeDefinition[] {fileType, versionType,
-                    entityType, repType}, true);
+                    entityType, repType, queueType}, true);
+
+            /* make sure that the queue object exists for async ingests */
+            this.objectService.createObject(session,
+                    ConnectorService.QUEUE_NODE).getNode().addMixin("scape:async-queue");
+            session.save();
         } catch (RepositoryException e) {
             LOG.error("Error while setting up scape connector api", e);
             throw new RuntimeException("Unable to setup scape on fedora");
