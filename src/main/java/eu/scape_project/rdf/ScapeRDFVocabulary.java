@@ -26,4 +26,5 @@ public interface ScapeRDFVocabulary {
     public static final String HAS_FILE = SCAPE_NAMESPACE + "hasFile";
     public static final String HAS_ITEM = SCAPE_NAMESPACE + "hasItem";
     public static final String HAS_REFERENCED_CONTENT = SCAPE_NAMESPACE + "hasReferencedContent";
+    public static final String HAS_INGEST_STATE = "hasIngestState";
 }

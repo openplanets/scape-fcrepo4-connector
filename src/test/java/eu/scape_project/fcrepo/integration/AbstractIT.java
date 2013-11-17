@@ -1,3 +1,4 @@
+
 package eu.scape_project.fcrepo.integration;
 
 import static org.junit.Assert.assertEquals;
@@ -6,27 +7,48 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.ConnectException;
 
 import javax.xml.bind.JAXBException;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.junit.Before;
+import org.junit.BeforeClass;
 
 import eu.scape_project.model.IntellectualEntity;
 import eu.scape_project.util.ScapeMarshaller;
 
 public class AbstractIT {
-    protected static final String SCAPE_URL = "http://localhost:8080/rest/scape";
+
+    protected static final String SCAPE_URL =
+            "http://localhost:8080/rest/scape";
 
     protected static final String FEDORA_URL = "http://localhost:8080/rest/";
 
     protected final DefaultHttpClient client = new DefaultHttpClient();
 
     protected ScapeMarshaller marshaller;
+
+    @BeforeClass
+    public static void init() throws Exception {
+        /* wait for an existing ContainerWrapper to finish */
+       try{
+           HttpGet get = new HttpGet("http://localhost:8080");
+           DefaultHttpClient client = new DefaultHttpClient();
+           while (client.execute(get).getStatusLine().getStatusCode() > 0){
+               Thread.sleep(1000);
+               System.out.println("Waiting for existing application server to stop...");
+           }
+        }catch(ConnectException e){
+            // it's good, we can't connect to 8080
+            // don't do exec flow by exception handling though ;)
+        }
+    }
 
     @Before
     public void setup() throws Exception {

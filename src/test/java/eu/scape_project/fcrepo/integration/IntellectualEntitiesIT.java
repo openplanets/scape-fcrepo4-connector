@@ -14,6 +14,7 @@
 
 package eu.scape_project.fcrepo.integration;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -25,6 +26,7 @@ import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.Arrays;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -47,6 +49,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import edu.harvard.hul.ois.xml.ns.fits.fits_output.Fits;
 import eu.scape_project.model.BitStream;
 import eu.scape_project.model.File;
+import eu.scape_project.model.Identifier;
 import eu.scape_project.model.IntellectualEntity;
 import eu.scape_project.model.IntellectualEntityCollection;
 import eu.scape_project.model.LifecycleState;
@@ -61,12 +64,47 @@ import eu.scape_project.model.VersionList;
  */
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = {"/integration-tests/managed-content/test-container.xml"})
-@DirtiesContext(classMode=ClassMode.AFTER_CLASS)
-public class IntellectualEntitiesIT extends AbstractIT{
+@DirtiesContext(classMode = ClassMode.AFTER_CLASS)
+public class IntellectualEntitiesIT extends AbstractIT {
 
     private static final Logger LOG = LoggerFactory
             .getLogger(IntellectualEntitiesIT.class);
 
+    @Test
+    public void testIngestAndCheckNonExistantMetadata() throws Exception {
+        Representation r = new Representation.Builder()
+            .rights(TestUtil.createPremisRightsRecord())
+            .identifier(new Identifier("rep-27"))
+            .source(TestUtil.createDCSourceRecord())
+            .build();
+        IntellectualEntity ie = new IntellectualEntity.Builder(TestUtil.createTestEntity("entity-27"))
+            .representations(Arrays.asList(r))
+            .build();
+
+        this.postEntity(ie);
+
+        HttpGet get = new HttpGet(SCAPE_URL + "/metadata/entity-27/rep-27/RIGHTS");
+        HttpResponse resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        assertTrue(EntityUtils.toString(resp.getEntity()).length() > 0);
+        get.releaseConnection();
+
+        get = new HttpGet(SCAPE_URL + "/metadata/entity-27/rep-27/SOURCE");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        assertTrue(EntityUtils.toString(resp.getEntity()).length() > 0);
+        get.releaseConnection();
+
+        get = new HttpGet(SCAPE_URL + "/metadata/entity-27/rep-27/TECHNICAL");
+        resp = this.client.execute(get);
+        assertEquals(404, resp.getStatusLine().getStatusCode());
+        get.releaseConnection();
+
+        get = new HttpGet(SCAPE_URL + "/metadata/entity-27/rep-27/PROVENANCE");
+        resp = this.client.execute(get);
+        assertEquals(404, resp.getStatusLine().getStatusCode());
+        get.releaseConnection();
+}
 
     @Test
     public void testIngestIntellectualEntityAndCheckinFedora() throws Exception {
@@ -142,19 +180,21 @@ public class IntellectualEntitiesIT extends AbstractIT{
         IntellectualEntity ie =
                 TestUtil.createTestEntityWithMultipleRepresentations("entity-3");
         this.postEntity(ie);
+        this.marshaller.serialize(ie, System.out);
 
-        Representation rep = ie.getRepresentations().get(0);
-        HttpGet get =
-                new HttpGet(SCAPE_URL + "/representation/entity-3/" +
-                        rep.getIdentifier().getValue());
-        HttpResponse resp = this.client.execute(get);
-        assertEquals(200, resp.getStatusLine().getStatusCode());
-        Representation fetched =
-                this.marshaller.deserialize(Representation.class, resp
-                        .getEntity().getContent());
-        assertEquals(rep.getIdentifier().getValue(), fetched.getIdentifier()
-                .getValue());
-        get.releaseConnection();
+        for (Representation rep : ie.getRepresentations()) {
+            HttpGet get =
+                    new HttpGet(SCAPE_URL + "/representation/entity-3/" +
+                            rep.getIdentifier().getValue());
+            HttpResponse resp = this.client.execute(get);
+            assertEquals(200, resp.getStatusLine().getStatusCode());
+            Representation fetched =
+                    this.marshaller.deserialize(Representation.class, resp
+                            .getEntity().getContent());
+            assertEquals(rep.getIdentifier().getValue(), fetched
+                    .getIdentifier().getValue());
+            get.releaseConnection();
+        }
     }
 
     @Test
@@ -172,7 +212,12 @@ public class IntellectualEntitiesIT extends AbstractIT{
         assertEquals(200, resp.getStatusLine().getStatusCode());
         assertEquals("image/png", resp.getFirstHeader("Content-Type")
                 .getValue());
-        get.releaseConnection();
+        ByteArrayOutputStream sink = new ByteArrayOutputStream();
+        IOUtils.copy(resp.getEntity().getContent(), sink);
+        ByteArrayOutputStream orig =new ByteArrayOutputStream();
+        IOUtils.copy(this.getClass().getClassLoader().getResourceAsStream("scape_logo.png"), orig);
+
+        assertArrayEquals(sink.toByteArray(), orig.toByteArray());
     }
 
     @Test
@@ -296,7 +341,7 @@ public class IntellectualEntitiesIT extends AbstractIT{
                             .getEntity().getContent());
             get.releaseConnection();
         } while (!state.getState().equals(State.INGESTED) &&
-                (System.currentTimeMillis() - start) < 15000);
+                (System.currentTimeMillis() - start) < 30000);
         assertEquals(State.INGESTED, state.getState());
     }
 
@@ -338,12 +383,22 @@ public class IntellectualEntitiesIT extends AbstractIT{
         HttpResponse resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         String xml = EntityUtils.toString(resp.getEntity(), "UTF-8");
-        System.out.println(xml);
         assertTrue(0 < xml.length());
         assertTrue(xml
                 .indexOf("<scape:identifier type=\"String\"><scape:value>file-1</scape:value></scape:identifier>") > 0);
         get.releaseConnection();
 
+        /* search via SRU for exetension png */
+        get =
+                new HttpGet(SCAPE_URL +
+                        "/sru/files?version=1&operation=searchRetrieve&query=png");
+        resp = this.client.execute(get);
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+        xml = EntityUtils.toString(resp.getEntity(), "UTF-8");
+        assertTrue(0 < xml.length());
+        assertTrue(xml
+                .indexOf("<scape:identifier type=\"String\"><scape:value>file-1</scape:value></scape:identifier>") > 0);
+        get.releaseConnection();
     }
 
     @Test
@@ -660,28 +715,33 @@ public class IntellectualEntitiesIT extends AbstractIT{
         IntellectualEntity ie1 = TestUtil.createTestEntity("entity-25");
         this.postEntity(ie1);
 
-        File f = new File.Builder(ie1.getRepresentations().get(0).getFiles().get(0))
-            .uri(URI.create(TestUtil.class.getClassLoader().getResource(
-                    "scape_logo.png").toString()))
-            .filename("wikipedia.png")
-            .mimetype("image/png")
-            .build();
+        File f =
+                new File.Builder(ie1.getRepresentations().get(0).getFiles()
+                        .get(0)).uri(
+                        URI.create(TestUtil.class.getClassLoader().getResource(
+                                "scape_logo.png").toString())).filename(
+                        "wikipedia.png").mimetype("image/png").build();
 
-        Representation r = new Representation.Builder(ie1.getRepresentations().get(0))
-            .title("title update")
-            .files(Arrays.asList(f))
-            .build();
+        Representation r =
+                new Representation.Builder(ie1.getRepresentations().get(0))
+                        .title("title update").files(Arrays.asList(f)).build();
 
-        HttpPut put = new HttpPut(SCAPE_URL + "/representation/entity-25/" + r.getIdentifier().getValue());
+        HttpPut put =
+                new HttpPut(SCAPE_URL + "/representation/entity-25/" +
+                        r.getIdentifier().getValue());
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         this.marshaller.serialize(r, sink);
-        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size(), ContentType.TEXT_XML));
+        put.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
         HttpResponse resp = this.client.execute(put);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         put.releaseConnection();
 
-        /* fetch the file  */
-        HttpGet get =new HttpGet(SCAPE_URL + "/file/entity-25/" +  r.getIdentifier().getValue() + "/" + f.getIdentifier().getValue() + "/1");
+        /* fetch the file */
+        HttpGet get =
+                new HttpGet(SCAPE_URL + "/file/entity-25/" +
+                        r.getIdentifier().getValue() + "/" +
+                        f.getIdentifier().getValue() + "/1");
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         get.releaseConnection();
@@ -689,7 +749,8 @@ public class IntellectualEntitiesIT extends AbstractIT{
     }
 
     @Test
-    public void testIngestAndUpdateBitstreamAndFetchOldVersion() throws Exception {
+    public void testIngestAndUpdateBitstreamAndFetchOldVersion()
+            throws Exception {
         IntellectualEntity ie1 = TestUtil.createTestEntity("entity-26");
         this.postEntity(ie1);
 
@@ -712,7 +773,8 @@ public class IntellectualEntitiesIT extends AbstractIT{
         resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         BitStream fetched =
-                (BitStream) this.marshaller.deserialize(resp.getEntity().getContent());
+                (BitStream) this.marshaller.deserialize(resp.getEntity()
+                        .getContent());
         assertEquals(Fits.class, fetched.getTechnical().getClass());
         get.releaseConnection();
 
