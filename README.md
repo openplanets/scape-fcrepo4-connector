@@ -3,7 +3,7 @@
 This is the implementation of the SCAPE Connector API as described by the spec available at 
 https://github.com/openplanets/scape-apis
 
-### What does X do?
+### What does SCAPE Connector API on Fedora 4 do?
 
 This is the implementation of the SCAPE Connector API as described by the spec available at 
 https://github.com/openplanets/scape-apis
