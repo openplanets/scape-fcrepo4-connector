@@ -66,7 +66,7 @@ This tool is supported by the [Open Planets Foundation](http://www.openplanetsfo
 
 ## Develop
 
-[![Build Status](https://travis-ci.org/openplanets/scape.png)](https://travis-ci.org/openplanets/scape)
+[![Build Status](https://travis-ci.org/openplanets/scape.png)](https://travis-ci.org/openplanets/scape-fcrepo4-connector)
 
 ### Build
 
