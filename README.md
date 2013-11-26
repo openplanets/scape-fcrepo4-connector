@@ -34,13 +34,16 @@ https://github.com/openplanets/scape-apis
 ### Troubleshooting
 
 * java.net.ConnectoException
+
 If you're getting 
 ```java 
 javax.jcr.RepositoryException: java.net.ConnectException
+
 at eu.scape_project.service.ConnectorService.addFiles(ConnectorService.java:540)
 ```
 
 the Servlet Container needs to know about the proxy settings. In e.g. Tomcat you can add the following to tomcat/bin/catalina.sh:
+
 ```
 CATALINA_OPTS="$CATALINA_OPTS -Dhttp.proxyHost=proxy.example.com -Dhttp.proxyPort=4242"
 ```
