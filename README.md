@@ -28,7 +28,7 @@ https://github.com/openplanets/scape-apis
 
 ## How to install and use
 
-* see https://github.com/openplanets/scape-fcrepo4-connector/README_INSTALL_AND_USAGE.md
+* see https://github.com/openplanets/scape-fcrepo4-connector/blob/master/README_INSTALL_AND_USAGE.md
 
 
 ### Troubleshooting
@@ -70,11 +70,11 @@ This tool is supported by the [Open Planets Foundation](http://www.openplanetsfo
 
 ### Build
 
-see https://github.com/openplanets/scape-fcrepo4-connector
+see https://github.com/openplanets/scape-fcrepo4-connector/blob/master/README_INSTALL_AND_USAGE.md
 
 ### Deploy
 
-see https://github.com/openplanets/scape-fcrepo4-connector
+see https://github.com/openplanets/scape-fcrepo4-connector/blob/master/README_INSTALL_AND_USAGE.md
 
 ### Contribute
 
