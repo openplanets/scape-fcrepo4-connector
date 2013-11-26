@@ -33,7 +33,7 @@ https://github.com/openplanets/scape-apis
 
 ### Troubleshooting
 
-** java.net.ConnectoException
+* java.net.ConnectoException
 If you're getting 
 ```java 
 javax.jcr.RepositoryException: java.net.ConnectException
