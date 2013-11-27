@@ -75,7 +75,7 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             final Session session = this.sessionFactory.getInternalSession();
             /* make sure that the scape namespace is available in fcrepo */
             final Dataset namespace =
-                    this.nodeService.getNamespaceRegistryGraph(session);
+                    this.nodeService.getNamespaceRegistryDataset(session);
             UpdateAction.parseExecute(
                     "INSERT {<" + ScapeRDFVocabulary.SCAPE_NAMESPACE + "> <" +
                             RdfLexicon.HAS_NAMESPACE_PREFIX +
