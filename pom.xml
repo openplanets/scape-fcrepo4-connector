@@ -13,6 +13,18 @@
 	<scape-platform-datamodel.version>0.1.7-SNAPSHOT</scape-platform-datamodel.version>
   </properties>
 
+  <!-- for fcrepo4 snapshot builds -->
+  <repositories>
+    <repository>
+      <id>sonatypesnapshots</id>
+      <url>http://oss.sonatype.org/content/repositories/snapshots/</url>
+	  <layout>default</layout>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+  
   <dependencies>
     <dependency>
       <groupId>org.fcrepo</groupId>
