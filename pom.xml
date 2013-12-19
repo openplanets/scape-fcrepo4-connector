@@ -13,7 +13,7 @@
 	<scape-platform-datamodel.version>0.1.7-SNAPSHOT</scape-platform-datamodel.version>
   </properties>
 
-  <!-- for fcrepo4 snapshot builds when building with travis -->
+  <!-- for fcrepo4 and scape-platform-datamodel snapshot builds when building with travis -->
   <profiles>
 	<profile>
 		<id>travisbuild</id>
