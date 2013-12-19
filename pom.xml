@@ -13,17 +13,29 @@
 	<scape-platform-datamodel.version>0.1.7-SNAPSHOT</scape-platform-datamodel.version>
   </properties>
 
-  <!-- for fcrepo4 snapshot builds -->
-  <repositories>
-    <repository>
-      <id>sonatypesnapshots</id>
-      <url>http://oss.sonatype.org/content/repositories/snapshots/</url>
-	  <layout>default</layout>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
+  <!-- for fcrepo4 snapshot builds when building with travis -->
+  <profiles>
+	<profile>
+		<id>travisbuild</id>
+		<activation>
+			<activeByDefault>false</activeByDefault>
+			<property>
+				<name>env.TRAVIS</name>
+				<value>true</value>
+			</property>
+		</activation>
+		  <repositories>
+			<repository>
+			  <id>sonatypesnapshots</id>
+			  <url>http://oss.sonatype.org/content/repositories/snapshots/</url>
+			  <layout>default</layout>
+			  <snapshots>
+				<enabled>true</enabled>
+			  </snapshots>
+			</repository>
+		  </repositories>
+	</profile>
+  </profiles>
   
   <dependencies>
     <dependency>
