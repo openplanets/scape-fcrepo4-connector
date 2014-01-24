@@ -65,6 +65,7 @@ import org.fcrepo.http.commons.session.SessionFactory;
 import org.fcrepo.kernel.Datastream;
 import org.fcrepo.kernel.FedoraObject;
 import org.fcrepo.kernel.exception.InvalidChecksumException;
+import org.fcrepo.kernel.rdf.GraphSubjects;
 import org.fcrepo.kernel.rdf.SerializationUtils;
 import org.fcrepo.kernel.rdf.impl.DefaultGraphSubjects;
 import org.fcrepo.kernel.services.DatastreamService;
