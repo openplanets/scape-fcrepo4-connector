@@ -67,12 +67,14 @@ import javax.xml.bind.JAXBException;
 import org.fcrepo.http.commons.session.SessionFactory;
 import org.fcrepo.kernel.Datastream;
 import org.fcrepo.kernel.FedoraObject;
+import org.fcrepo.kernel.Transaction;
 import org.fcrepo.kernel.exception.InvalidChecksumException;
 import org.fcrepo.kernel.rdf.SerializationUtils;
 import org.fcrepo.kernel.rdf.impl.DefaultGraphSubjects;
 import org.fcrepo.kernel.services.DatastreamService;
 import org.fcrepo.kernel.services.NodeService;
 import org.fcrepo.kernel.services.ObjectService;
+import org.fcrepo.kernel.services.TransactionService;
 import org.purl.dc.elements._1.ElementContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,6 +140,9 @@ public class ConnectorService {
 
     @Autowired
     private SessionFactory sessionFactory;
+
+    @Autowired
+    private TransactionService txService;
 
     private final java.io.File tempDirectory;
 
@@ -291,10 +296,12 @@ public class ConnectorService {
         }
         /* discover all the Bistreams and add them to the file */
         final List<BitStream> streams = new ArrayList<>();
-        javax.jcr.Property prop =
-                fileObject.getNode().getProperty(HAS_BITSTREAM);
-        for (Value v : prop.getValues()) {
-            streams.add(fetchBitStream(session, v.getString()));
+        if (fileObject.getNode().hasProperty(HAS_BITSTREAM)) {
+            javax.jcr.Property prop =
+                    fileObject.getNode().getProperty(HAS_BITSTREAM);
+            for (Value v : prop.getValues()) {
+                streams.add(fetchBitStream(session, v.getString()));
+            }
         }
         f.bitStreams(streams);
 
@@ -414,7 +421,7 @@ public class ConnectorService {
         final javax.jcr.Property prop =
                 entityObject.getNode().getProperty(HAS_VERSION);
         final List<String> versionIds = new ArrayList<>();
-        for (Value val: prop.getValues()){
+        for (Value val : prop.getValues()) {
             versionIds.add(val.getString());
         }
         return new VersionList(entityId, versionIds);
@@ -427,12 +434,20 @@ public class ConnectorService {
 
     public String addEntity(final Session session, final InputStream src,
             String entityId) throws RepositoryException {
+        return addEntity(session, src, entityId, null);
+    }
+
+    public String addEntity(final Session session, final InputStream src,
+            String entityId, Transaction tx) throws RepositoryException {
         try {
             /* read the post body into an IntellectualEntity object */
             final IntellectualEntity ie =
                     this.marshaller.deserialize(IntellectualEntity.class, src);
-            final StringBuilder sparql = new StringBuilder();
-
+            boolean commitTx = false;
+            if (tx == null) {
+                tx = this.txService.beginTransaction(session);
+                commitTx = true;
+            }
             if (entityId == null) {
                 if (ie.getIdentifier() != null) {
                     entityId = ie.getIdentifier().getValue();
@@ -478,12 +493,15 @@ public class ConnectorService {
             entityObject.getNode().setProperty(HAS_LIFECYCLESTATE_DETAILS,
                     "successfully ingested at " + new Date().getTime());
             entityObject.getNode().setProperty(HAS_TYPE, "intellectualentity");
-            entityObject.getNode().setProperty(HAS_VERSION, new String[] {versionPath});
+            entityObject.getNode().setProperty(HAS_VERSION,
+                    new String[] {versionPath});
             entityObject.getNode()
                     .setProperty(HAS_CURRENT_VERSION, versionPath);
 
             /* save the changes made to the objects */
-            session.save();
+            if (commitTx) {
+                txService.commit(tx.getId());
+            }
             return entityId;
 
         } catch (JAXBException e) {
@@ -513,13 +531,12 @@ public class ConnectorService {
             if (fileNode.hasProperty(HAS_BITSTREAM)) {
                 Value[] current =
                         fileNode.getProperty(HAS_BITSTREAM).getValues();
-                Value[] updated =
-                        Arrays.copyOf(current, current.length + 1);
-                updated[updated.length - 1] = session.getValueFactory().createValue(bsPath);
+                Value[] updated = Arrays.copyOf(current, current.length + 1);
+                updated[updated.length - 1] =
+                        session.getValueFactory().createValue(bsPath);
                 fileNode.setProperty(HAS_BITSTREAM, updated);
             } else {
-                fileNode.setProperty(HAS_BITSTREAM,
-                        new String[] {bsPath});
+                fileNode.setProperty(HAS_BITSTREAM, new String[] {bsPath});
             }
         }
     }
@@ -570,15 +587,13 @@ public class ConnectorService {
             fileObject.getNode().setProperty(HAS_INGEST_SOURCE,
                     f.getUri().toASCIIString());
             if (repNode.hasProperty(HAS_FILE)) {
-                Value[] current =
-                        repNode.getProperty(HAS_FILE).getValues();
-                Value[] updated =
-                        Arrays.copyOf(current, current.length + 1);
-                updated[updated.length - 1] = session.getValueFactory().createValue(filePath);
+                Value[] current = repNode.getProperty(HAS_FILE).getValues();
+                Value[] updated = Arrays.copyOf(current, current.length + 1);
+                updated[updated.length - 1] =
+                        session.getValueFactory().createValue(filePath);
                 repNode.setProperty(HAS_FILE, updated);
             } else {
-                repNode.setProperty(HAS_FILE,
-                        new String[] {filePath});
+                repNode.setProperty(HAS_FILE, new String[] {filePath});
             }
 
             if (this.referencedContent) {
@@ -713,7 +728,8 @@ public class ConnectorService {
                         versionNode.getProperty(HAS_REPRESENTATION).getValues();
                 Value[] newReps =
                         Arrays.copyOf(currentReps, currentReps.length + 1);
-                newReps[newReps.length - 1] = session.getValueFactory().createValue(repPath);
+                newReps[newReps.length - 1] =
+                        session.getValueFactory().createValue(repPath);
                 versionNode.setProperty(HAS_REPRESENTATION, newReps);
             } else {
                 versionNode.setProperty(HAS_REPRESENTATION,
@@ -753,10 +769,11 @@ public class ConnectorService {
                     .getNode());
             if (entityObject.getNode().hasProperty(HAS_VERSION)) {
                 Value[] current =
-                        entityObject.getNode().getProperty(HAS_VERSION).getValues();
-                Value[] newReps =
-                        Arrays.copyOf(current, current.length + 1);
-                newReps[newReps.length - 1] = session.getValueFactory().createValue(newVersionPath);
+                        entityObject.getNode().getProperty(HAS_VERSION)
+                                .getValues();
+                Value[] newReps = Arrays.copyOf(current, current.length + 1);
+                newReps[newReps.length - 1] =
+                        session.getValueFactory().createValue(newVersionPath);
                 entityObject.getNode().setProperty(HAS_VERSION, newReps);
             } else {
                 entityObject.getNode().setProperty(HAS_VERSION, newVersionPath);
@@ -1074,13 +1091,17 @@ public class ConnectorService {
                             new ByteArrayInputStream(sink.toByteArray()));
             item.setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE, "QUEUED");
             /* update the ingest queue */
-            final DefaultGraphSubjects subjects =
-                    new DefaultGraphSubjects(session);
-            final String uri = subjects.getGraphSubject(QUEUE_NODE).getURI();
-            final String sparql =
-                    "INSERT {<" + uri + "> <" + HAS_ITEM + "> \"" +
-                            item.getPath() + "\"} WHERE {}";
-            queue.updatePropertiesDataset(subjects, sparql);
+            if (queue.getNode().hasProperty(HAS_ITEM)) {
+                Value[] current =
+                        queue.getNode().getProperty(HAS_ITEM).getValues();
+                Value[] updated = Arrays.copyOf(current, current.length + 1);
+                updated[current.length] =
+                        session.getValueFactory().createValue(item.getPath());
+                queue.getNode().setProperty(HAS_ITEM, updated);
+            } else {
+                queue.getNode().setProperty(HAS_ITEM,
+                        new String[] {item.getPath()});
+            }
             session.save();
             return id;
         } catch (IOException | InvalidChecksumException | JAXBException e) {
@@ -1155,36 +1176,44 @@ public class ConnectorService {
         if (!this.objectService.exists(session, QUEUE_NODE)) {
             return;
         }
-        for (String item : getItemsFromQueue(session)) {
+        List<String> items = getItemsFromQueue(session);
+        session.save();
+        for (String item : items) {
             final Datastream ds =
                     this.datastreamService.getDatastream(session, item);
             /* update the ingest state so that it won't get ingested twice */
             try {
+                final Transaction tx = txService.beginTransaction(sessionFactory.getInternalSession());
                 ds.getNode().setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE,
                         "INGESTING");
                 addEntity(session, ds.getContent(), item.substring(QUEUE_NODE
-                        .length() + 1));
+                        .length() + 1), tx);
                 deleteFromQueue(session, item);
+                txService.commit(tx.getId());
             } catch (Exception e) {
                 ds.getNode().setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE,
                         "INGEST_FAILED");
             }
         }
-        session.save();
     }
 
     private void deleteFromQueue(final Session session, final String item)
             throws RepositoryException {
         final FedoraObject queueObject =
                 this.objectService.getObject(session, QUEUE_NODE);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri =
-                subjects.getGraphSubject(queueObject.getNode()).getURI();
-
-        final String sparql =
-                "DELETE {<" + uri + "> <" + HAS_ITEM + "> \"" + item +
-                        "\"} WHERE {}";
-        queueObject.updatePropertiesDataset(subjects, sparql);
+        if (queueObject.getNode().hasProperty(HAS_ITEM)) {
+            Value[] current = queueObject.getNode().getProperty(HAS_ITEM).getValues();
+            Value[] updated = new Value[current.length - 1];
+            int idx = 0;
+            for (Value v : current) {
+                if (v.getString() != item) {
+                    updated[idx++] = v;
+                }
+            }
+            queueObject.getNode().setProperty(HAS_ITEM, updated);
+        }else {
+            throw new RepositoryException("Queue is empty! Unable to remove item " + item);
+        }
         this.nodeService.deleteObject(session, item);
         session.save();
     }
@@ -1193,23 +1222,10 @@ public class ConnectorService {
             throws RepositoryException {
         final FedoraObject queueObject =
                 this.objectService.getObject(session, QUEUE_NODE);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri =
-                subjects.getGraphSubject(queueObject.getNode()).getURI();
-        final Model queueModel =
-                SerializationUtils.unifyDatasetModel(queueObject
-                        .getPropertiesDataset(subjects));
-        final Resource parent = queueModel.createResource(uri);
-        StmtIterator it =
-                queueModel.listStatements(parent, queueModel
-                        .createProperty(HAS_ITEM), (RDFNode) null);
-        List<String> queueItems = new ArrayList<>();
-        while (it.hasNext()) {
-            String path = it.next().getObject().asLiteral().getString();
-            if (this.datastreamService.getDatastreamNode(session, path)
-                    .getProperties(ScapeRDFVocabulary.HAS_INGEST_STATE)
-                    .nextProperty().getString().equals("QUEUED")) {
-                queueItems.add(path);
+        final List<String> queueItems = new ArrayList<>();
+        if (queueObject.getNode().hasProperty(HAS_ITEM)) {
+            for (final Value v: queueObject.getNode().getProperty(HAS_ITEM).getValues()) {
+                queueItems.add(v.getString());
             }
         }
         return queueItems;
