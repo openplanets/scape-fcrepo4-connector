@@ -9,7 +9,7 @@ package eu.scape_project.rdf;
  *
  */
 public interface ScapeRDFVocabulary {
-    public static final String SCAPE_NAMESPACE = "http://scapeproject.eu/model#";
+    public static final String SCAPE_NAMESPACE = "scape:";
     public static final String HAS_REPRESENTATION = SCAPE_NAMESPACE + "hasRepresentation";
     public static final String HAS_TYPE = SCAPE_NAMESPACE + "hasType";
     public static final String HAS_SCHEMA = SCAPE_NAMESPACE + "hasSchema";

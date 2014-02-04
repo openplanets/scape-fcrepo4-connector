@@ -42,7 +42,9 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,6 +55,7 @@ import javax.jcr.NodeIterator;
 import javax.jcr.PathNotFoundException;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
+import javax.jcr.Value;
 import javax.jcr.query.Query;
 import javax.jcr.query.QueryManager;
 import javax.jcr.query.QueryResult;
@@ -65,7 +68,6 @@ import org.fcrepo.http.commons.session.SessionFactory;
 import org.fcrepo.kernel.Datastream;
 import org.fcrepo.kernel.FedoraObject;
 import org.fcrepo.kernel.exception.InvalidChecksumException;
-import org.fcrepo.kernel.rdf.GraphSubjects;
 import org.fcrepo.kernel.rdf.SerializationUtils;
 import org.fcrepo.kernel.rdf.impl.DefaultGraphSubjects;
 import org.fcrepo.kernel.services.DatastreamService;
@@ -79,7 +81,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.google.books.gbs.GbsType;
-import com.hp.hpl.jena.query.Dataset;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.RDFNode;
@@ -184,60 +185,45 @@ public class ConnectorService {
         final String entityPath = "/" + ENTITY_FOLDER + "/" + id;
         final FedoraObject ieObject =
                 this.objectService.getObject(session, entityPath);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String entityUri =
-                subjects.getGraphSubject(ieObject.getNode()).getURI();
 
-        final Dataset ds = ieObject.getPropertiesDataset(subjects);
-        final Model entityModel = SerializationUtils.unifyDatasetModel(ds);
         String versionPath;
         if (versionNumber != null) {
             versionPath = entityPath + "/version-" + versionNumber;
         } else {
-            versionPath = getCurrentVersionPath(entityModel, entityUri);
+            versionPath = getCurrentVersionPath(ieObject.getNode());
         }
 
         final FedoraObject versionObject =
                 this.objectService.getObject(session, versionPath);
-        final Model versionModel =
-                SerializationUtils.unifyDatasetModel(versionObject
-                        .getPropertiesDataset(subjects));
 
         /* fetch the ie's metadata form the repo */
         ie.descriptive(fetchMetadata(session, versionPath + "/DESCRIPTIVE"));
 
         /* find all the representations of this entity */
-        final Resource versionResource =
-                versionModel.createResource(subjects.getGraphSubject(
-                        versionPath).getURI());
         final List<Representation> reps = new ArrayList<>();
-        for (String repUri : getLiteralStrings(versionModel, versionResource,
-                HAS_REPRESENTATION)) {
-            reps.add(fetchRepresentation(session, repUri.substring(repUri
-                    .indexOf('/'))));
+        Iterator<javax.jcr.Property> props =
+                versionObject.getNode().getProperties(HAS_REPRESENTATION);
+        while (props.hasNext()) {
+            for (Value val : props.next().getValues()) {
+                reps.add(fetchRepresentation(session, val.getString()));
+            }
         }
         ie.representations(reps);
 
         /* fetch the lifecycle state */
-        final Resource entityResource = versionModel.createResource(entityUri);
         final String state =
-                getFirstLiteralString(entityModel, entityResource,
-                        HAS_LIFECYCLESTATE);
+                ieObject.getNode().getProperty(HAS_LIFECYCLESTATE).getString();
         final String details =
-                getFirstLiteralString(entityModel, entityResource,
-                        HAS_LIFECYCLESTATE_DETAILS);
+                ieObject.getNode().getProperty(HAS_LIFECYCLESTATE_DETAILS)
+                        .getString();
         ie.lifecycleState(new LifecycleState(details, LifecycleState.State
                 .valueOf(state)));
 
         return ie.build();
     }
 
-    private String getCurrentVersionPath(Model entityModel, String uri)
-            throws RepositoryException {
-        final Resource parent = entityModel.createResource(uri);
-        String version =
-                getResourceFromModel(entityModel, parent, HAS_CURRENT_VERSION);
-        return version.substring(version.indexOf('/'));
+    private String getCurrentVersionPath(Node node) throws RepositoryException {
+        return "/" + node.getProperty(HAS_CURRENT_VERSION).getString();
     }
 
     private String getResourceFromModel(Model model, Resource parent,
@@ -267,15 +253,9 @@ public class ConnectorService {
             entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
             final FedoraObject fo =
                     this.objectService.getObject(session, entityPath);
-            final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-            final String uri = subjects.getGraphSubject(entityPath).getURI();
-            final Model entityModel =
-                    SerializationUtils.unifyDatasetModel(fo
-                            .getPropertiesDataset(new DefaultGraphSubjects(
-                                    session)));
             dsPath =
-                    this.getCurrentVersionPath(entityModel, uri) + "/" +
-                            repId + "/" + fileId + "/DATA";
+                    this.getCurrentVersionPath(fo.getNode()) + "/" + repId +
+                            "/" + fileId + "/DATA";
         } else {
             entityPath =
                     "/" + ENTITY_FOLDER + "/" + entityId + "/version-" +
@@ -294,34 +274,27 @@ public class ConnectorService {
         final File.Builder f = new File.Builder();
         final FedoraObject fileObject =
                 this.objectService.getObject(session, fileUri);
-        final Model fileModel =
-                SerializationUtils
-                        .unifyDatasetModel(fileObject
-                                .getPropertiesDataset(new DefaultGraphSubjects(
-                                        session)));
-        final Resource parent =
-                fileModel.createResource(new DefaultGraphSubjects(session)
-                        .getGraphSubject(fileObject.getNode()).getURI());
 
         /* fetch and add the properties and metadata from the repo */
         f.technical(fetchMetadata(session, fileUri + "/TECHNICAL"));
         String fileId = fileUri.substring(fileUri.lastIndexOf('/') + 1);
         f.identifier(new Identifier(fileId));
-        f.filename(getFirstLiteralString(fileModel, parent, HAS_FILENAME));
-        f.mimetype(getFirstLiteralString(fileModel, parent, HAS_MIMETYPE));
+        f.filename(fileObject.getNode().getProperty(HAS_FILENAME).getString());
+        f.mimetype(fileObject.getNode().getProperty(HAS_MIMETYPE).getString());
         String[] ids = fileUri.split("/");
         if (this.referencedContent) {
-            f.uri(URI.create(getFirstLiteralString(fileModel, parent,
-                    HAS_REFERENCED_CONTENT)));
+            f.uri(URI.create(fileObject.getNode().getProperty(
+                    HAS_REFERENCED_CONTENT).getString()));
         } else {
             f.uri(URI.create(fedoraUrl + "/scape/file/" + ids[ids.length - 4] +
                     "/" + ids[ids.length - 2] + "/" + ids[ids.length - 1]));
         }
         /* discover all the Bistreams and add them to the file */
         final List<BitStream> streams = new ArrayList<>();
-        for (String bsUri : getLiteralStrings(fileModel, parent, HAS_BITSTREAM)) {
-            streams.add(fetchBitStream(session, bsUri.substring(bsUri
-                    .indexOf('/'))));
+        javax.jcr.Property prop =
+                fileObject.getNode().getProperty(HAS_BITSTREAM);
+        for (Value v : prop.getValues()) {
+            streams.add(fetchBitStream(session, v.getString()));
         }
         f.bitStreams(streams);
 
@@ -336,14 +309,9 @@ public class ConnectorService {
         String entityPath = "/" + ENTITY_FOLDER + "/" + ids[0];
         final FedoraObject entityObject =
                 objectService.getObject(session, entityPath);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri = subjects.getGraphSubject(entityObject.getNode()).getURI();
 
         StringBuilder versionPath = new StringBuilder();
-        versionPath.append(this.getCurrentVersionPath(
-                SerializationUtils
-                        .unifyDatasetModel(entityObject
-                                .getPropertiesDataset(subjects)), uri));
+        versionPath.append(this.getCurrentVersionPath(entityObject.getNode()));
         for (int i = 1; i < ids.length; i++) {
             versionPath.append("/");
             versionPath.append(ids[i]);
@@ -405,9 +373,12 @@ public class ConnectorService {
 
         /* add the individual files */
         final List<File> files = new ArrayList<>();
-        for (String fileUri : getLiteralStrings(repModel, parent, HAS_FILE)) {
-            files.add(fetchFile(session, fileUri
-                    .substring(fileUri.indexOf('/'))));
+        Iterator<javax.jcr.Property> props =
+                repObject.getNode().getProperties(HAS_FILE);
+        while (props.hasNext()) {
+            for (Value val : props.next().getValues()) {
+                files.add(fetchFile(session, val.getString()));
+            }
         }
 
         rep.files(files);
@@ -419,18 +390,11 @@ public class ConnectorService {
             throws RepositoryException {
 
         String entityPath, repPath;
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
         if (versionId == null) {
             entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
             final FedoraObject fo =
                     this.objectService.getObject(session, entityPath);
-            final String uri = subjects.getGraphSubject(fo.getNode()).getURI();
-            final Model entityModel =
-                    SerializationUtils.unifyDatasetModel(fo
-                            .getPropertiesDataset(subjects));
-            repPath =
-                    this.getCurrentVersionPath(entityModel, uri) + "/" +
-                            repId;
+            repPath = this.getCurrentVersionPath(fo.getNode()) + "/" + repId;
         } else {
             entityPath =
                     "/" + ENTITY_FOLDER + "/" + entityId + "/version-" +
@@ -446,15 +410,14 @@ public class ConnectorService {
         final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
         final FedoraObject entityObject =
                 this.objectService.getObject(session, entityPath);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri =
-                subjects.getGraphSubject(entityObject.getNode()).getURI();
-        final Model model =
-                SerializationUtils.unifyDatasetModel(entityObject
-                        .getPropertiesDataset(subjects));
-        final Resource subject = model.createResource(uri);
-        return new VersionList(entityId, getLiteralStrings(model, subject,
-                HAS_VERSION));
+
+        final javax.jcr.Property prop =
+                entityObject.getNode().getProperty(HAS_VERSION);
+        final List<String> versionIds = new ArrayList<>();
+        for (Value val: prop.getValues()){
+            versionIds.add(val.getString());
+        }
+        return new VersionList(entityId, versionIds);
     }
 
     public String addEntity(final Session session, final InputStream src)
@@ -499,36 +462,25 @@ public class ConnectorService {
 
             /* add the metadata datastream for descriptive metadata */
             if (ie.getDescriptive() != null) {
-                sparql.append(addMetadata(session, ie.getDescriptive(),
-                        versionPath + "/DESCRIPTIVE"));
+                addMetadata(session, ie.getDescriptive(), versionPath +
+                        "/DESCRIPTIVE");
             }
 
             /* add all the representations */
-            sparql.append(addRepresentations(session, ie.getRepresentations(),
-                    versionPath));
+            addRepresentations(session, ie.getRepresentations(), versionObject
+                    .getNode());
 
             /* update the intellectual entity's properties */
-            final DefaultGraphSubjects subjects =
-                    new DefaultGraphSubjects(session);
-            final String entityUri =
-                    subjects.getGraphSubject(entityObject.getNode()).getURI();
-            final String versionUri =
-                    subjects.getGraphSubject(versionObject.getNode()).getURI();
 
-            sparql.append("INSERT {<" + entityUri + "> <" + HAS_LIFECYCLESTATE +
-                    "> \"" + LifecycleState.State.INGESTED + "\"} WHERE {};");
-            sparql.append("INSERT {<" + entityUri + "> <" +
-                    HAS_LIFECYCLESTATE_DETAILS +
-                    "> \"successfully ingested at " + new Date().getTime() +
-                    "\"} WHERE {};");
-            sparql.append("INSERT {<" + entityUri + "> <" + HAS_TYPE +
-                    "> \"intellectualentity\"} WHERE {};");
-            sparql.append("INSERT {<" + entityUri + "> <" + HAS_VERSION +
-                    "> \"" + versionUri + "\"} WHERE {};");
-            sparql.append("INSERT {<" + entityUri + "> <" +
-                    HAS_CURRENT_VERSION + ">  <" + versionUri + "> } WHERE {};");
-            /* update the object and it's child's using sparql */
-            entityObject.updatePropertiesDataset(subjects, sparql.toString());
+            // add the properties to the node
+            entityObject.getNode().setProperty(HAS_LIFECYCLESTATE,
+                    LifecycleState.State.INGESTED.name());
+            entityObject.getNode().setProperty(HAS_LIFECYCLESTATE_DETAILS,
+                    "successfully ingested at " + new Date().getTime());
+            entityObject.getNode().setProperty(HAS_TYPE, "intellectualentity");
+            entityObject.getNode().setProperty(HAS_VERSION, new String[] {versionPath});
+            entityObject.getNode()
+                    .setProperty(HAS_CURRENT_VERSION, versionPath);
 
             /* save the changes made to the objects */
             session.save();
@@ -540,52 +492,47 @@ public class ConnectorService {
         }
     }
 
-    private String addBitStreams(final Session session,
-            final List<BitStream> bitStreams, final String filePath)
+    private void addBitStreams(final Session session,
+            final List<BitStream> bitStreams, final Node fileNode)
             throws RepositoryException {
-
-        final StringBuilder sparql = new StringBuilder();
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-
         for (BitStream bs : bitStreams) {
             final String bsId =
                     (bs.getIdentifier() != null) ? bs.getIdentifier()
                             .getValue() : UUID.randomUUID().toString();
-            final String bsPath = filePath + "/" + bsId;
+            final String bsPath = fileNode.getPath() + "/" + bsId;
             final FedoraObject bsObject =
                     this.objectService.createObject(session, bsPath);
-            final String uri =
-                    subjects.getGraphSubject(bsObject.getNode()).getURI();
-            final String fileUri = subjects.getGraphSubject(filePath).getURI();
             if (bs.getTechnical() != null) {
-                sparql.append(addMetadata(session, bs.getTechnical(), bsPath +
-                        "/TECHNICAL"));
+                addMetadata(session, bs.getTechnical(), bsPath + "/TECHNICAL");
             }
             final String bsType =
                     (bs.getType() != null) ? bs.getType().name()
                             : BitStream.Type.STREAM.name();
-
-            sparql.append("INSERT {<" + uri + "> <" + HAS_TYPE +
-                    "> \"bitstream\"} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_BITSTREAM_TYPE +
-                    "> \"" + bsType + "\"} WHERE {};");
-            sparql.append("INSERT {<" + fileUri + "> <" + HAS_BITSTREAM +
-                    "> \"" + uri + "\"} WHERE {};");
+            bsObject.getNode().setProperty(HAS_TYPE, "bitstream");
+            bsObject.getNode().setProperty(HAS_BITSTREAM_TYPE, bsType);
+            if (fileNode.hasProperty(HAS_BITSTREAM)) {
+                Value[] current =
+                        fileNode.getProperty(HAS_BITSTREAM).getValues();
+                Value[] updated =
+                        Arrays.copyOf(current, current.length + 1);
+                updated[updated.length - 1] = session.getValueFactory().createValue(bsPath);
+                fileNode.setProperty(HAS_BITSTREAM, updated);
+            } else {
+                fileNode.setProperty(HAS_BITSTREAM,
+                        new String[] {bsPath});
+            }
         }
-
-        return sparql.toString();
     }
 
-    private String addFiles(final Session session, final List<File> files,
-            final String repPath) throws RepositoryException {
+    private void addFiles(final Session session, final List<File> files,
+            final Node repNode) throws RepositoryException {
 
-        final StringBuilder sparql = new StringBuilder();
         for (File f : files) {
 
             final String fileId =
                     (f.getIdentifier() != null) ? f.getIdentifier().getValue()
                             : UUID.randomUUID().toString();
-            final String filePath = repPath + "/" + fileId;
+            final String filePath = repNode.getPath() + "/" + fileId;
 
             URI fileUri = f.getUri();
             if (fileUri.getScheme() == null) {
@@ -596,48 +543,48 @@ public class ConnectorService {
             final FedoraObject fileObject =
                     this.objectService.createObject(session, filePath);
             fileObject.getNode().addMixin("scape:file");
-            final DefaultGraphSubjects subjects =
-                    new DefaultGraphSubjects(session);
-            final String uri =
-                    subjects.getGraphSubject(fileObject.getNode()).getURI();
-            final String repUri =
-                    subjects.getGraphSubject("/" + repPath).getURI();
 
             /* add the metadata */
             if (f.getTechnical() != null) {
-                sparql.append(addMetadata(session, f.getTechnical(), filePath +
-                        "/TECHNICAL"));
+                addMetadata(session, f.getTechnical(), filePath + "/TECHNICAL");
             }
 
             /* add all bitstreams as child objects */
             if (f.getBitStreams() != null) {
-                sparql.append(addBitStreams(session, f.getBitStreams(), "/" +
-                        filePath));
+                addBitStreams(session, f.getBitStreams(), fileObject.getNode());
             }
             String fileName = f.getFilename();
             if (fileName == null) {
-                fileName = f.getUri().toASCIIString().substring(f.getUri().toASCIIString().lastIndexOf('/') + 1);
+                fileName =
+                        f.getUri().toASCIIString()
+                                .substring(
+                                        f.getUri().toASCIIString().lastIndexOf(
+                                                '/') + 1);
             }
             final String mimeType =
                     (f.getMimetype() != null) ? f.getMimetype()
                             : "application/binary";
-
-            sparql.append("INSERT {<" + uri + "> <" + HAS_TYPE +
-                    "> \"file\"} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_FILENAME + "> \"" +
-                    fileName + "\"} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_MIMETYPE + "> \"" +
-                    mimeType + "\"} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_INGEST_SOURCE +
-                    "> \"" + f.getUri() + "\"} WHERE {};");
-            sparql.append("INSERT {<" + repUri + "> <" + HAS_FILE + "> \"" +
-                    uri + "\"} WHERE {};");
+            fileObject.getNode().setProperty(HAS_TYPE, "file");
+            fileObject.getNode().setProperty(HAS_FILENAME, fileName);
+            fileObject.getNode().setProperty(HAS_MIMETYPE, mimeType);
+            fileObject.getNode().setProperty(HAS_INGEST_SOURCE,
+                    f.getUri().toASCIIString());
+            if (repNode.hasProperty(HAS_FILE)) {
+                Value[] current =
+                        repNode.getProperty(HAS_FILE).getValues();
+                Value[] updated =
+                        Arrays.copyOf(current, current.length + 1);
+                updated[updated.length - 1] = session.getValueFactory().createValue(filePath);
+                repNode.setProperty(HAS_FILE, updated);
+            } else {
+                repNode.setProperty(HAS_FILE,
+                        new String[] {filePath});
+            }
 
             if (this.referencedContent) {
                 /* only write a reference to the file URI as a node property */
-                sparql.append("INSERT {<" + uri + "> <" +
-                        HAS_REFERENCED_CONTENT + "> \"" + fileUri +
-                        "\"} WHERE {};");
+                fileObject.getNode().setProperty(HAS_REFERENCED_CONTENT,
+                        fileUri.toASCIIString());
             } else {
                 /* load the actual binary data into the repo */
                 LOG.info("reding binary from {}", fileUri.toASCIIString());
@@ -651,13 +598,10 @@ public class ConnectorService {
                 }
             }
         }
-
-        return sparql.toString();
     }
 
-    private String addMetadata(final Session session, final Object metadata,
+    private void addMetadata(final Session session, final Object metadata,
             final String path) throws RepositoryException {
-        final StringBuilder sparql = new StringBuilder();
         try {
 
             /* use piped streams to copy the data to the repo */
@@ -685,9 +629,6 @@ public class ConnectorService {
                     datastreamService.createDatastreamNode(session, path,
                             "text/xml", null, dcSrc);
 
-            final DefaultGraphSubjects subjects =
-                    new DefaultGraphSubjects(session);
-            final String dsUri = subjects.getGraphSubject(desc).getURI();
             /* get the type of the metadata */
             String type = "unknown";
             String schema = "";
@@ -725,12 +666,8 @@ public class ConnectorService {
             }
 
             /* add a sparql query to set the type of this object */
-            sparql.append("INSERT {<" + dsUri + "> <" + HAS_TYPE + "> \"" +
-                    type + "\"} WHERE {};");
-            sparql.append("INSERT {<" + dsUri + "> <" + HAS_SCHEMA + "> \"" +
-                    schema + "\"} WHERE {};");
-
-            return sparql.toString();
+            desc.setProperty(HAS_TYPE, type);
+            desc.setProperty(HAS_SCHEMA, schema);
 
         } catch (IOException e) {
             throw new RepositoryException(e);
@@ -739,56 +676,50 @@ public class ConnectorService {
         }
     }
 
-    private String
-            addRepresentations(final Session session,
-                    final List<Representation> representations,
-                    final String versionPath) throws RepositoryException {
-        final StringBuilder sparql = new StringBuilder();
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String versionUri =
-                subjects.getGraphSubject("/" + versionPath).getURI();
+    private void addRepresentations(final Session session,
+            final List<Representation> representations, final Node versionNode)
+            throws RepositoryException {
         for (Representation rep : representations) {
             final String repId =
                     (rep.getIdentifier() != null) ? rep.getIdentifier()
                             .getValue() : UUID.randomUUID().toString();
-            final String repPath = versionPath + "/" + repId;
+            final String repPath = versionNode.getPath() + "/" + repId;
             final FedoraObject repObject =
                     objectService.createObject(session, repPath);
-            final String repUri =
-                    subjects.getGraphSubject(repObject.getNode()).getURI();
             repObject.getNode().addMixin("scape:representation");
 
             /* add the metadatasets of the rep as datastreams */
             if (rep.getTechnical() != null) {
-                sparql.append(addMetadata(session, rep.getTechnical(), repPath +
-                        "/TECHNICAL"));
+                addMetadata(session, rep.getTechnical(), repPath + "/TECHNICAL");
             }
             if (rep.getSource() != null) {
-                sparql.append(addMetadata(session, rep.getSource(), repPath +
-                        "/SOURCE"));
+                addMetadata(session, rep.getSource(), repPath + "/SOURCE");
             }
             if (rep.getRights() != null) {
-                sparql.append(addMetadata(session, rep.getRights(), repPath +
-                        "/RIGHTS"));
+                addMetadata(session, rep.getRights(), repPath + "/RIGHTS");
             }
             if (rep.getProvenance() != null) {
-                sparql.append(addMetadata(session, rep.getProvenance(),
-                        repPath + "/PROVENANCE"));
+                addMetadata(session, rep.getProvenance(), repPath +
+                        "/PROVENANCE");
             }
 
             /* add all the files */
-            sparql.append(addFiles(session, rep.getFiles(), repPath));
+            addFiles(session, rep.getFiles(), repObject.getNode());
 
-            /* add a sparql query to set the type of this object */
-            sparql.append("INSERT {<" + repUri + "> <" + HAS_TYPE +
-                    "> \"representation\"} WHERE {};");
-            sparql.append("INSERT {<" + repUri + "> <" + HAS_TITLE + "> \"" +
-                    rep.getTitle() + "\"} WHERE {};");
-            sparql.append("INSERT {<" + versionUri + "> <" +
-                    HAS_REPRESENTATION + "> \"" + repUri + "\"} WHERE {};");
-
+            repObject.getNode().setProperty(HAS_TYPE, "representation");
+            repObject.getNode().setProperty(HAS_TITLE, rep.getTitle());
+            if (versionNode.hasProperty(HAS_REPRESENTATION)) {
+                Value[] currentReps =
+                        versionNode.getProperty(HAS_REPRESENTATION).getValues();
+                Value[] newReps =
+                        Arrays.copyOf(currentReps, currentReps.length + 1);
+                newReps[newReps.length - 1] = session.getValueFactory().createValue(repPath);
+                versionNode.setProperty(HAS_REPRESENTATION, newReps);
+            } else {
+                versionNode.setProperty(HAS_REPRESENTATION,
+                        new String[] {repPath});
+            }
         }
-        return sparql.toString();
     }
 
     public void updateEntity(final Session session, final InputStream src,
@@ -796,51 +727,42 @@ public class ConnectorService {
         final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
         final FedoraObject entityObject =
                 this.objectService.getObject(session, entityPath);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri =
-                subjects.getGraphSubject(entityObject.getNode()).getURI();
         /* fetch the current version number from the repo */
         final String oldVersionPath =
-                getCurrentVersionPath(SerializationUtils
-                        .unifyDatasetModel(entityObject
-                                .getPropertiesDataset(subjects)), uri);
-        final String oldVersionUri =
-                subjects.getGraphSubject(oldVersionPath).getURI();
+                getCurrentVersionPath(entityObject.getNode());
         int versionNumber =
                 Integer.parseInt(oldVersionPath.substring(oldVersionPath
                         .lastIndexOf('-') + 1)) + 1;
         final String newVersionPath = entityPath + "/version-" + versionNumber;
-        final String newVersionUri =
-                subjects.getGraphSubject(newVersionPath).getURI();
-
+        final FedoraObject versionObject =
+                this.objectService.createObject(session, newVersionPath);
         try {
             /* read the post body into an IntellectualEntity object */
             final IntellectualEntity ie =
                     this.marshaller.deserialize(IntellectualEntity.class, src);
             final StringBuilder sparql = new StringBuilder();
 
-            final FedoraObject versionObject =
-                    objectService.createObject(session, newVersionPath);
-
             /* add the metadata datastream for descriptive metadata */
             if (ie.getDescriptive() != null) {
-                sparql.append(addMetadata(session, ie.getDescriptive(),
-                        newVersionPath + "/DESCRIPTIVE"));
+                addMetadata(session, ie.getDescriptive(), newVersionPath +
+                        "/DESCRIPTIVE");
             }
 
             /* add all the representations */
-            sparql.append(addRepresentations(session, ie.getRepresentations(),
-                    newVersionPath));
-
-            sparql.append("DELETE {<" + uri + "> <" + HAS_CURRENT_VERSION +
-                    "> <" + oldVersionUri + ">} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_VERSION + "> \"" +
-                    newVersionUri + "\"} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_CURRENT_VERSION +
-                    ">  <" + newVersionUri + ">} WHERE {};");
-
-            /* update the object and it's child's using sparql */
-            entityObject.updatePropertiesDataset(subjects, sparql.toString());
+            addRepresentations(session, ie.getRepresentations(), versionObject
+                    .getNode());
+            if (entityObject.getNode().hasProperty(HAS_VERSION)) {
+                Value[] current =
+                        entityObject.getNode().getProperty(HAS_VERSION).getValues();
+                Value[] newReps =
+                        Arrays.copyOf(current, current.length + 1);
+                newReps[newReps.length - 1] = session.getValueFactory().createValue(newVersionPath);
+                entityObject.getNode().setProperty(HAS_VERSION, newReps);
+            } else {
+                entityObject.getNode().setProperty(HAS_VERSION, newVersionPath);
+            }
+            entityObject.getNode().setProperty(HAS_CURRENT_VERSION,
+                    newVersionPath);
 
             /* save the changes made to the objects */
             session.save();

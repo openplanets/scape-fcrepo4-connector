@@ -72,18 +72,20 @@ public class IntellectualEntitiesIT extends AbstractIT {
 
     @Test
     public void testIngestAndCheckNonExistantMetadata() throws Exception {
-        Representation r = new Representation.Builder()
-            .rights(TestUtil.createPremisRightsRecord())
-            .identifier(new Identifier("rep-27"))
-            .source(TestUtil.createDCSourceRecord())
-            .build();
-        IntellectualEntity ie = new IntellectualEntity.Builder(TestUtil.createTestEntity("entity-27"))
-            .representations(Arrays.asList(r))
-            .build();
+        Representation r =
+                new Representation.Builder().rights(
+                        TestUtil.createPremisRightsRecord()).identifier(
+                        new Identifier("rep-27")).source(
+                        TestUtil.createDCSourceRecord()).build();
+        IntellectualEntity ie =
+                new IntellectualEntity.Builder(TestUtil
+                        .createTestEntity("entity-27")).representations(
+                        Arrays.asList(r)).build();
 
         this.postEntity(ie);
 
-        HttpGet get = new HttpGet(SCAPE_URL + "/metadata/entity-27/rep-27/RIGHTS");
+        HttpGet get =
+                new HttpGet(SCAPE_URL + "/metadata/entity-27/rep-27/RIGHTS");
         HttpResponse resp = this.client.execute(get);
         assertEquals(200, resp.getStatusLine().getStatusCode());
         assertTrue(EntityUtils.toString(resp.getEntity()).length() > 0);
@@ -104,7 +106,7 @@ public class IntellectualEntitiesIT extends AbstractIT {
         resp = this.client.execute(get);
         assertEquals(404, resp.getStatusLine().getStatusCode());
         get.releaseConnection();
-}
+    }
 
     @Test
     public void testIngestIntellectualEntityAndCheckinFedora() throws Exception {
@@ -140,7 +142,7 @@ public class IntellectualEntitiesIT extends AbstractIT {
         assertEquals(ElementContainer.class, ie.getDescriptive().getClass());
 
         for (Representation r : fetched.getRepresentations()) {
-            assertTrue(r.getFiles().size() > 0);
+            assertEquals(3, r.getFiles().size());
             assertNotNull(r.getTechnical());
             assertNotNull(r.getProvenance());
             assertNotNull(r.getRights());
@@ -148,7 +150,7 @@ public class IntellectualEntitiesIT extends AbstractIT {
 
             for (File f : r.getFiles()) {
                 assertNotNull(f.getBitStreams());
-                assertTrue(f.getBitStreams().size() > 0);
+                assertEquals(3, f.getBitStreams().size());
                 assertNotNull(f.getTechnical());
                 for (BitStream bs : f.getBitStreams()) {
                     assertNotNull(bs.getTechnical());
@@ -214,8 +216,9 @@ public class IntellectualEntitiesIT extends AbstractIT {
                 .getValue());
         ByteArrayOutputStream sink = new ByteArrayOutputStream();
         IOUtils.copy(resp.getEntity().getContent(), sink);
-        ByteArrayOutputStream orig =new ByteArrayOutputStream();
-        IOUtils.copy(this.getClass().getClassLoader().getResourceAsStream("scape_logo.png"), orig);
+        ByteArrayOutputStream orig = new ByteArrayOutputStream();
+        IOUtils.copy(this.getClass().getClassLoader().getResourceAsStream(
+                "scape_logo.png"), orig);
 
         assertArrayEquals(sink.toByteArray(), orig.toByteArray());
     }
