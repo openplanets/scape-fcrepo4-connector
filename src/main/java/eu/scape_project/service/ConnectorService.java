@@ -109,9 +109,9 @@ import gov.loc.videomd.VideoType;
 
 /**
  * Component which does all the interaction with fcrepo4
- *
+ * 
  * @author frank asseg
- *
+ * 
  */
 @Component
 public class ConnectorService {
@@ -126,8 +126,7 @@ public class ConnectorService {
 
     private final ScapeMarshaller marshaller;
 
-    private static final Logger LOG = LoggerFactory
-            .getLogger(ConnectorService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ConnectorService.class);
 
     @Autowired
     private ObjectService objectService;
@@ -146,13 +145,9 @@ public class ConnectorService {
 
     private final java.io.File tempDirectory;
 
-    public ConnectorService()
-            throws JAXBException {
-        System.out.println("new instance for marshaller");
+    public ConnectorService() throws JAXBException {
         marshaller = ScapeMarshaller.newInstance();
-        tempDirectory =
-                new java.io.File(System.getProperty("java.io.tmpdir") +
-                        "/scape-connector-queue");
+        tempDirectory = new java.io.File(System.getProperty("java.io.tmpdir") + "/scape-connector-queue");
         if (!tempDirectory.exists()) {
             tempDirectory.mkdir();
         }
@@ -174,22 +169,17 @@ public class ConnectorService {
         this.referencedContent = referencedContent;
     }
 
-    public IntellectualEntity
-            fetchEntity(final Session session, final String id)
-                    throws RepositoryException {
+    public IntellectualEntity fetchEntity(final Session session, final String id) throws RepositoryException {
         return fetchEntity(session, id, null);
     }
 
-    public IntellectualEntity fetchEntity(final Session session,
-            final String id, final Integer versionNumber)
-            throws RepositoryException {
+    public IntellectualEntity fetchEntity(final Session session, final String id, final Integer versionNumber) throws RepositoryException {
 
         final IntellectualEntity.Builder ie = new IntellectualEntity.Builder();
         ie.identifier(new Identifier(id));
 
         final String entityPath = "/" + ENTITY_FOLDER + "/" + id;
-        final FedoraObject ieObject =
-                this.objectService.getObject(session, entityPath);
+        final FedoraObject ieObject = this.objectService.getObject(session, entityPath);
 
         String versionPath;
         if (versionNumber != null) {
@@ -198,31 +188,24 @@ public class ConnectorService {
             versionPath = getCurrentVersionPath(ieObject.getNode());
         }
 
-        final FedoraObject versionObject =
-                this.objectService.getObject(session, versionPath);
+        final FedoraObject versionObject = this.objectService.getObject(session, versionPath);
 
         /* fetch the ie's metadata form the repo */
         ie.descriptive(fetchMetadata(session, versionPath + "/DESCRIPTIVE"));
 
         /* find all the representations of this entity */
         final List<Representation> reps = new ArrayList<>();
-        Iterator<javax.jcr.Property> props =
-                versionObject.getNode().getProperties(HAS_REPRESENTATION);
-        while (props.hasNext()) {
-            for (Value val : props.next().getValues()) {
+        if (versionObject.getNode().hasProperty(HAS_REPRESENTATION)) {
+            for (Value val : versionObject.getNode().getProperty(HAS_REPRESENTATION).getValues()) {
                 reps.add(fetchRepresentation(session, val.getString()));
             }
         }
         ie.representations(reps);
 
         /* fetch the lifecycle state */
-        final String state =
-                ieObject.getNode().getProperty(HAS_LIFECYCLESTATE).getString();
-        final String details =
-                ieObject.getNode().getProperty(HAS_LIFECYCLESTATE_DETAILS)
-                        .getString();
-        ie.lifecycleState(new LifecycleState(details, LifecycleState.State
-                .valueOf(state)));
+        final String state = ieObject.getNode().getProperty(HAS_LIFECYCLESTATE).getString();
+        final String details = ieObject.getNode().getProperty(HAS_LIFECYCLESTATE_DETAILS).getString();
+        ie.lifecycleState(new LifecycleState(details, LifecycleState.State.valueOf(state)));
 
         return ie.build();
     }
@@ -231,54 +214,40 @@ public class ConnectorService {
         return "/" + node.getProperty(HAS_CURRENT_VERSION).getString();
     }
 
-    private String getResourceFromModel(Model model, Resource parent,
-            String propertyName) {
-        StmtIterator it =
-                model.listStatements(parent,
-                        model.createProperty(propertyName), (RDFNode) null);
+    private String getResourceFromModel(Model model, Resource parent, String propertyName) {
+        StmtIterator it = model.listStatements(parent, model.createProperty(propertyName), (RDFNode) null);
         String uri = it.next().getResource().getURI();
         return uri;
     }
 
-    public BitStream fetchBitStream(final Session session, final String bsUri)
-            throws RepositoryException {
+    public BitStream fetchBitStream(final Session session, final String bsUri) throws RepositoryException {
         final BitStream.Builder bs = new BitStream.Builder();
-        bs.identifier(new Identifier(bsUri
-                .substring(bsUri.lastIndexOf('/') + 1)));
+        bs.identifier(new Identifier(bsUri.substring(bsUri.lastIndexOf('/') + 1)));
         bs.technical(fetchMetadata(session, bsUri + "/TECHNICAL"));
         return bs.build();
     }
 
-    public ContentTypeInputStream fetchBinaryFile(final Session session,
-            final String entityId, final String repId, final String fileId,
-            final String versionId) throws RepositoryException {
+    public ContentTypeInputStream fetchBinaryFile(final Session session, final String entityId, final String repId, final String fileId, final String versionId)
+            throws RepositoryException {
 
         final String entityPath, dsPath;
         if (versionId == null) {
             entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
-            final FedoraObject fo =
-                    this.objectService.getObject(session, entityPath);
-            dsPath =
-                    this.getCurrentVersionPath(fo.getNode()) + "/" + repId +
-                            "/" + fileId + "/DATA";
+            final FedoraObject fo = this.objectService.getObject(session, entityPath);
+            dsPath = this.getCurrentVersionPath(fo.getNode()) + "/" + repId + "/" + fileId + "/DATA";
         } else {
-            entityPath =
-                    "/" + ENTITY_FOLDER + "/" + entityId + "/version-" +
-                            versionId;
+            entityPath = "/" + ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
             dsPath = entityPath + "/" + repId + "/" + fileId + "/DATA";
         }
 
-        final Datastream ds =
-                this.datastreamService.getDatastream(session, dsPath);
+        final Datastream ds = this.datastreamService.getDatastream(session, dsPath);
 
         return new ContentTypeInputStream(ds.getMimeType(), ds.getContent());
     }
 
-    public File fetchFile(final Session session, final String fileUri)
-            throws RepositoryException {
+    public File fetchFile(final Session session, final String fileUri) throws RepositoryException {
         final File.Builder f = new File.Builder();
-        final FedoraObject fileObject =
-                this.objectService.getObject(session, fileUri);
+        final FedoraObject fileObject = this.objectService.getObject(session, fileUri);
 
         /* fetch and add the properties and metadata from the repo */
         f.technical(fetchMetadata(session, fileUri + "/TECHNICAL"));
@@ -288,17 +257,14 @@ public class ConnectorService {
         f.mimetype(fileObject.getNode().getProperty(HAS_MIMETYPE).getString());
         String[] ids = fileUri.split("/");
         if (this.referencedContent) {
-            f.uri(URI.create(fileObject.getNode().getProperty(
-                    HAS_REFERENCED_CONTENT).getString()));
+            f.uri(URI.create(fileObject.getNode().getProperty(HAS_REFERENCED_CONTENT).getString()));
         } else {
-            f.uri(URI.create(fedoraUrl + "/scape/file/" + ids[ids.length - 4] +
-                    "/" + ids[ids.length - 2] + "/" + ids[ids.length - 1]));
+            f.uri(URI.create(fedoraUrl + "/scape/file/" + ids[ids.length - 4] + "/" + ids[ids.length - 2] + "/" + ids[ids.length - 1]));
         }
         /* discover all the Bistreams and add them to the file */
         final List<BitStream> streams = new ArrayList<>();
         if (fileObject.getNode().hasProperty(HAS_BITSTREAM)) {
-            javax.jcr.Property prop =
-                    fileObject.getNode().getProperty(HAS_BITSTREAM);
+            javax.jcr.Property prop = fileObject.getNode().getProperty(HAS_BITSTREAM);
             for (Value v : prop.getValues()) {
                 streams.add(fetchBitStream(session, v.getString()));
             }
@@ -308,14 +274,11 @@ public class ConnectorService {
         return f.build();
     }
 
-    public Object
-            fetchCurrentMetadata(final Session session, final String path)
-                    throws RepositoryException {
+    public Object fetchCurrentMetadata(final Session session, final String path) throws RepositoryException {
 
         String[] ids = path.substring(ENTITY_FOLDER.length() + 2).split("/");
         String entityPath = "/" + ENTITY_FOLDER + "/" + ids[0];
-        final FedoraObject entityObject =
-                objectService.getObject(session, entityPath);
+        final FedoraObject entityObject = objectService.getObject(session, entityPath);
 
         StringBuilder versionPath = new StringBuilder();
         versionPath.append(this.getCurrentVersionPath(entityObject.getNode()));
@@ -326,100 +289,77 @@ public class ConnectorService {
 
         try {
             if (!this.datastreamService.exists(session, versionPath.toString())) {
-                throw new PathNotFoundException("No metadata available for " +
-                        path);
+                throw new PathNotFoundException("No metadata available for " + path);
             }
-            final Datastream mdDs =
-                    this.datastreamService.getDatastream(session, versionPath
-                            .toString());
+            final Datastream mdDs = this.datastreamService.getDatastream(session, versionPath.toString());
             return this.marshaller.deserialize(mdDs.getContent());
         } catch (JAXBException e) {
             throw new RepositoryException(e);
         }
     }
 
-    public Object fetchMetadata(final Session session, final String path)
-            throws RepositoryException {
+    public Object fetchMetadata(final Session session, final String path) throws RepositoryException {
 
         try {
             if (!this.datastreamService.exists(session, path)) {
                 return null;
             }
-            final Datastream mdDs =
-                    this.datastreamService.getDatastream(session, path);
+            final Datastream mdDs = this.datastreamService.getDatastream(session, path);
             return this.marshaller.deserialize(mdDs.getContent());
         } catch (JAXBException e) {
             throw new RepositoryException(e);
         }
     }
 
-    public Representation fetchRepresentation(final Session session,
-            final String repPath) throws RepositoryException {
+    public Representation fetchRepresentation(final Session session, final String repPath) throws RepositoryException {
         final Representation.Builder rep = new Representation.Builder();
-        final FedoraObject repObject =
-                this.objectService.getObject(session, repPath);
+        final FedoraObject repObject = this.objectService.getObject(session, repPath);
         final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri =
-                subjects.getGraphSubject(repObject.getNode()).getURI();
-        final Model repModel =
-                SerializationUtils.unifyDatasetModel(repObject
-                        .getPropertiesDataset(subjects));
+        final String uri = subjects.getGraphSubject(repObject.getNode()).getURI();
+        final Model repModel = SerializationUtils.unifyDatasetModel(repObject.getPropertiesDataset(subjects));
         final Resource parent = repModel.createResource(uri);
 
         /* find the title and id */
-        rep.identifier(new Identifier(repPath.substring(repPath
-                .lastIndexOf('/') + 1)));
+        rep.identifier(new Identifier(repPath.substring(repPath.lastIndexOf('/') + 1)));
         rep.title(getFirstLiteralString(repModel, parent, HAS_TITLE));
 
         /* find and add the metadata */
         rep.technical(fetchMetadata(session, repObject.getPath() + "/TECHNICAL"));
         rep.source(fetchMetadata(session, repObject.getPath() + "/SOURCE"));
-        rep.provenance(fetchMetadata(session, repObject.getPath() +
-                "/PROVENANCE"));
+        rep.provenance(fetchMetadata(session, repObject.getPath() + "/PROVENANCE"));
         rep.rights(fetchMetadata(session, repObject.getPath() + "/RIGHTS"));
 
         /* add the individual files */
         final List<File> files = new ArrayList<>();
-        Iterator<javax.jcr.Property> props =
-                repObject.getNode().getProperties(HAS_FILE);
-        while (props.hasNext()) {
-            for (Value val : props.next().getValues()) {
+        if (repObject.getNode().hasProperty(HAS_FILE)) {
+            for (Value val : repObject.getNode().getProperty(HAS_FILE).getValues()) {
                 files.add(fetchFile(session, val.getString()));
             }
         }
-
         rep.files(files);
         return rep.build();
     }
 
-    public Representation fetchRepresentation(final Session session,
-            final String entityId, String repId, Integer versionId)
-            throws RepositoryException {
+    public Representation fetchRepresentation(final Session session, final String entityId, String repId, Integer versionId) throws RepositoryException {
 
         String entityPath, repPath;
         if (versionId == null) {
             entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
-            final FedoraObject fo =
-                    this.objectService.getObject(session, entityPath);
+            final FedoraObject fo = this.objectService.getObject(session, entityPath);
             repPath = this.getCurrentVersionPath(fo.getNode()) + "/" + repId;
         } else {
-            entityPath =
-                    "/" + ENTITY_FOLDER + "/" + entityId + "/version-" +
-                            versionId;
+            entityPath = "/" + ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
             repPath = entityPath + "/" + repId;
         }
 
         return this.fetchRepresentation(session, repPath);
     }
 
-    public VersionList fetchVersionList(final Session session,
-            final String entityId) throws RepositoryException {
+    public VersionList fetchVersionList(final Session session, final String entityId) throws RepositoryException {
         final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
-        final FedoraObject entityObject =
-                this.objectService.getObject(session, entityPath);
+        final FedoraObject entityObject = this.objectService.getObject(session, entityPath);
 
-        final javax.jcr.Property prop =
-                entityObject.getNode().getProperty(HAS_VERSION);
+        final javax.jcr.Property prop = entityObject.getNode().getProperty(HAS_VERSION);
         final List<String> versionIds = new ArrayList<>();
         for (Value val : prop.getValues()) {
             versionIds.add(val.getString());
@@ -427,22 +367,18 @@ public class ConnectorService {
         return new VersionList(entityId, versionIds);
     }
 
-    public String addEntity(final Session session, final InputStream src)
-            throws RepositoryException {
+    public String addEntity(final Session session, final InputStream src) throws RepositoryException {
         return addEntity(session, src, null);
     }
 
-    public String addEntity(final Session session, final InputStream src,
-            String entityId) throws RepositoryException {
+    public String addEntity(final Session session, final InputStream src, String entityId) throws RepositoryException {
         return addEntity(session, src, entityId, null);
     }
 
-    public String addEntity(final Session session, final InputStream src,
-            String entityId, Transaction tx) throws RepositoryException {
+    public String addEntity(final Session session, final InputStream src, String entityId, Transaction tx) throws RepositoryException {
         try {
             /* read the post body into an IntellectualEntity object */
-            final IntellectualEntity ie =
-                    this.marshaller.deserialize(IntellectualEntity.class, src);
+            final IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, src);
             boolean commitTx = false;
             if (tx == null) {
                 tx = this.txService.beginTransaction(session);
@@ -462,41 +398,31 @@ public class ConnectorService {
 
             if (this.objectService.exists(session, "/" + entityPath)) {
                 /* return a 409: Conflict result */
-                throw new ItemExistsException("Entity '" + entityId +
-                        "' already exists");
+                throw new ItemExistsException("Entity '" + entityId + "' already exists");
             }
 
-            final FedoraObject entityObject =
-                    objectService.createObject(session, entityPath);
+            final FedoraObject entityObject = objectService.createObject(session, entityPath);
             entityObject.getNode().addMixin("scape:intellectual-entity");
 
-            final FedoraObject versionObject =
-                    objectService.createObject(session, versionPath);
-            versionObject.getNode().addMixin(
-                    "scape:intellectual-entity-version");
+            final FedoraObject versionObject = objectService.createObject(session, versionPath);
+            versionObject.getNode().addMixin("scape:intellectual-entity-version");
 
             /* add the metadata datastream for descriptive metadata */
             if (ie.getDescriptive() != null) {
-                addMetadata(session, ie.getDescriptive(), versionPath +
-                        "/DESCRIPTIVE");
+                addMetadata(session, ie.getDescriptive(), versionPath + "/DESCRIPTIVE");
             }
 
             /* add all the representations */
-            addRepresentations(session, ie.getRepresentations(), versionObject
-                    .getNode());
+            addRepresentations(session, ie.getRepresentations(), versionObject.getNode());
 
             /* update the intellectual entity's properties */
 
             // add the properties to the node
-            entityObject.getNode().setProperty(HAS_LIFECYCLESTATE,
-                    LifecycleState.State.INGESTED.name());
-            entityObject.getNode().setProperty(HAS_LIFECYCLESTATE_DETAILS,
-                    "successfully ingested at " + new Date().getTime());
+            entityObject.getNode().setProperty(HAS_LIFECYCLESTATE, LifecycleState.State.INGESTED.name());
+            entityObject.getNode().setProperty(HAS_LIFECYCLESTATE_DETAILS, "successfully ingested at " + new Date().getTime());
             entityObject.getNode().setProperty(HAS_TYPE, "intellectualentity");
-            entityObject.getNode().setProperty(HAS_VERSION,
-                    new String[] {versionPath});
-            entityObject.getNode()
-                    .setProperty(HAS_CURRENT_VERSION, versionPath);
+            entityObject.getNode().setProperty(HAS_VERSION, new String[] { versionPath });
+            entityObject.getNode().setProperty(HAS_CURRENT_VERSION, versionPath);
 
             /* save the changes made to the objects */
             if (commitTx) {
@@ -510,45 +436,33 @@ public class ConnectorService {
         }
     }
 
-    private void addBitStreams(final Session session,
-            final List<BitStream> bitStreams, final Node fileNode)
-            throws RepositoryException {
+    private void addBitStreams(final Session session, final List<BitStream> bitStreams, final Node fileNode) throws RepositoryException {
         for (BitStream bs : bitStreams) {
-            final String bsId =
-                    (bs.getIdentifier() != null) ? bs.getIdentifier()
-                            .getValue() : UUID.randomUUID().toString();
+            final String bsId = (bs.getIdentifier() != null) ? bs.getIdentifier().getValue() : UUID.randomUUID().toString();
             final String bsPath = fileNode.getPath() + "/" + bsId;
-            final FedoraObject bsObject =
-                    this.objectService.createObject(session, bsPath);
+            final FedoraObject bsObject = this.objectService.createObject(session, bsPath);
             if (bs.getTechnical() != null) {
                 addMetadata(session, bs.getTechnical(), bsPath + "/TECHNICAL");
             }
-            final String bsType =
-                    (bs.getType() != null) ? bs.getType().name()
-                            : BitStream.Type.STREAM.name();
+            final String bsType = (bs.getType() != null) ? bs.getType().name() : BitStream.Type.STREAM.name();
             bsObject.getNode().setProperty(HAS_TYPE, "bitstream");
             bsObject.getNode().setProperty(HAS_BITSTREAM_TYPE, bsType);
             if (fileNode.hasProperty(HAS_BITSTREAM)) {
-                Value[] current =
-                        fileNode.getProperty(HAS_BITSTREAM).getValues();
+                Value[] current = fileNode.getProperty(HAS_BITSTREAM).getValues();
                 Value[] updated = Arrays.copyOf(current, current.length + 1);
-                updated[updated.length - 1] =
-                        session.getValueFactory().createValue(bsPath);
+                updated[updated.length - 1] = session.getValueFactory().createValue(bsPath);
                 fileNode.setProperty(HAS_BITSTREAM, updated);
             } else {
-                fileNode.setProperty(HAS_BITSTREAM, new String[] {bsPath});
+                fileNode.setProperty(HAS_BITSTREAM, new String[] { bsPath });
             }
         }
     }
 
-    private void addFiles(final Session session, final List<File> files,
-            final Node repNode) throws RepositoryException {
+    private void addFiles(final Session session, final List<File> files, final Node repNode) throws RepositoryException {
 
         for (File f : files) {
 
-            final String fileId =
-                    (f.getIdentifier() != null) ? f.getIdentifier().getValue()
-                            : UUID.randomUUID().toString();
+            final String fileId = (f.getIdentifier() != null) ? f.getIdentifier().getValue() : UUID.randomUUID().toString();
             final String filePath = repNode.getPath() + "/" + fileId;
 
             URI fileUri = f.getUri();
@@ -557,8 +471,7 @@ public class ConnectorService {
             }
 
             /* create a datastream in fedora for this file */
-            final FedoraObject fileObject =
-                    this.objectService.createObject(session, filePath);
+            final FedoraObject fileObject = this.objectService.createObject(session, filePath);
             fileObject.getNode().addMixin("scape:file");
 
             /* add the metadata */
@@ -572,42 +485,30 @@ public class ConnectorService {
             }
             String fileName = f.getFilename();
             if (fileName == null) {
-                fileName =
-                        f.getUri().toASCIIString()
-                                .substring(
-                                        f.getUri().toASCIIString().lastIndexOf(
-                                                '/') + 1);
+                fileName = f.getUri().toASCIIString().substring(f.getUri().toASCIIString().lastIndexOf('/') + 1);
             }
-            final String mimeType =
-                    (f.getMimetype() != null) ? f.getMimetype()
-                            : "application/binary";
+            final String mimeType = (f.getMimetype() != null) ? f.getMimetype() : "application/binary";
             fileObject.getNode().setProperty(HAS_TYPE, "file");
             fileObject.getNode().setProperty(HAS_FILENAME, fileName);
             fileObject.getNode().setProperty(HAS_MIMETYPE, mimeType);
-            fileObject.getNode().setProperty(HAS_INGEST_SOURCE,
-                    f.getUri().toASCIIString());
+            fileObject.getNode().setProperty(HAS_INGEST_SOURCE, f.getUri().toASCIIString());
             if (repNode.hasProperty(HAS_FILE)) {
                 Value[] current = repNode.getProperty(HAS_FILE).getValues();
                 Value[] updated = Arrays.copyOf(current, current.length + 1);
-                updated[updated.length - 1] =
-                        session.getValueFactory().createValue(filePath);
+                updated[updated.length - 1] = session.getValueFactory().createValue(filePath);
                 repNode.setProperty(HAS_FILE, updated);
             } else {
-                repNode.setProperty(HAS_FILE, new String[] {filePath});
+                repNode.setProperty(HAS_FILE, new String[] { filePath });
             }
 
             if (this.referencedContent) {
                 /* only write a reference to the file URI as a node property */
-                fileObject.getNode().setProperty(HAS_REFERENCED_CONTENT,
-                        fileUri.toASCIIString());
+                fileObject.getNode().setProperty(HAS_REFERENCED_CONTENT, fileUri.toASCIIString());
             } else {
                 /* load the actual binary data into the repo */
                 LOG.info("reding binary from {}", fileUri.toASCIIString());
                 try (final InputStream src = fileUri.toURL().openStream()) {
-                    final Node fileDs =
-                            this.datastreamService.createDatastreamNode(
-                                    session, filePath + "/DATA", f
-                                            .getMimetype(), null, src);
+                    final Node fileDs = this.datastreamService.createDatastreamNode(session, filePath + "/DATA", f.getMimetype(), null, src);
                 } catch (IOException | InvalidChecksumException e) {
                     throw new RepositoryException(e);
                 }
@@ -615,8 +516,7 @@ public class ConnectorService {
         }
     }
 
-    private void addMetadata(final Session session, final Object metadata,
-            final String path) throws RepositoryException {
+    private void addMetadata(final Session session, final Object metadata, final String path) throws RepositoryException {
         try {
 
             /* use piped streams to copy the data to the repo */
@@ -628,8 +528,7 @@ public class ConnectorService {
                 @Override
                 public void run() {
                     try {
-                        ConnectorService.this.marshaller.getJaxbMarshaller()
-                                .marshal(metadata, dcSink);
+                        ConnectorService.this.marshaller.getJaxbMarshaller().marshal(metadata, dcSink);
                         dcSink.flush();
                         dcSink.close();
                     } catch (JAXBException e) {
@@ -640,9 +539,7 @@ public class ConnectorService {
                 }
             }).start();
 
-            final Node desc =
-                    datastreamService.createDatastreamNode(session, path,
-                            "text/xml", null, dcSrc);
+            final Node desc = datastreamService.createDatastreamNode(session, path, "text/xml", null, dcSrc);
 
             /* get the type of the metadata */
             String type = "unknown";
@@ -691,16 +588,11 @@ public class ConnectorService {
         }
     }
 
-    private void addRepresentations(final Session session,
-            final List<Representation> representations, final Node versionNode)
-            throws RepositoryException {
+    private void addRepresentations(final Session session, final List<Representation> representations, final Node versionNode) throws RepositoryException {
         for (Representation rep : representations) {
-            final String repId =
-                    (rep.getIdentifier() != null) ? rep.getIdentifier()
-                            .getValue() : UUID.randomUUID().toString();
+            final String repId = (rep.getIdentifier() != null) ? rep.getIdentifier().getValue() : UUID.randomUUID().toString();
             final String repPath = versionNode.getPath() + "/" + repId;
-            final FedoraObject repObject =
-                    objectService.createObject(session, repPath);
+            final FedoraObject repObject = objectService.createObject(session, repPath);
             repObject.getNode().addMixin("scape:representation");
 
             /* add the metadatasets of the rep as datastreams */
@@ -714,8 +606,7 @@ public class ConnectorService {
                 addMetadata(session, rep.getRights(), repPath + "/RIGHTS");
             }
             if (rep.getProvenance() != null) {
-                addMetadata(session, rep.getProvenance(), repPath +
-                        "/PROVENANCE");
+                addMetadata(session, rep.getProvenance(), repPath + "/PROVENANCE");
             }
 
             /* add all the files */
@@ -724,62 +615,45 @@ public class ConnectorService {
             repObject.getNode().setProperty(HAS_TYPE, "representation");
             repObject.getNode().setProperty(HAS_TITLE, rep.getTitle());
             if (versionNode.hasProperty(HAS_REPRESENTATION)) {
-                Value[] currentReps =
-                        versionNode.getProperty(HAS_REPRESENTATION).getValues();
-                Value[] newReps =
-                        Arrays.copyOf(currentReps, currentReps.length + 1);
-                newReps[newReps.length - 1] =
-                        session.getValueFactory().createValue(repPath);
+                Value[] currentReps = versionNode.getProperty(HAS_REPRESENTATION).getValues();
+                Value[] newReps = Arrays.copyOf(currentReps, currentReps.length + 1);
+                newReps[newReps.length - 1] = session.getValueFactory().createValue(repPath);
                 versionNode.setProperty(HAS_REPRESENTATION, newReps);
             } else {
-                versionNode.setProperty(HAS_REPRESENTATION,
-                        new String[] {repPath});
+                versionNode.setProperty(HAS_REPRESENTATION, new String[] { repPath });
             }
         }
     }
 
-    public void updateEntity(final Session session, final InputStream src,
-            final String entityId) throws RepositoryException {
+    public void updateEntity(final Session session, final InputStream src, final String entityId) throws RepositoryException {
         final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
-        final FedoraObject entityObject =
-                this.objectService.getObject(session, entityPath);
+        final FedoraObject entityObject = this.objectService.getObject(session, entityPath);
         /* fetch the current version number from the repo */
-        final String oldVersionPath =
-                getCurrentVersionPath(entityObject.getNode());
-        int versionNumber =
-                Integer.parseInt(oldVersionPath.substring(oldVersionPath
-                        .lastIndexOf('-') + 1)) + 1;
+        final String oldVersionPath = getCurrentVersionPath(entityObject.getNode());
+        int versionNumber = Integer.parseInt(oldVersionPath.substring(oldVersionPath.lastIndexOf('-') + 1)) + 1;
         final String newVersionPath = entityPath + "/version-" + versionNumber;
-        final FedoraObject versionObject =
-                this.objectService.createObject(session, newVersionPath);
+        final FedoraObject versionObject = this.objectService.createObject(session, newVersionPath);
         try {
             /* read the post body into an IntellectualEntity object */
-            final IntellectualEntity ie =
-                    this.marshaller.deserialize(IntellectualEntity.class, src);
+            final IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, src);
             final StringBuilder sparql = new StringBuilder();
 
             /* add the metadata datastream for descriptive metadata */
             if (ie.getDescriptive() != null) {
-                addMetadata(session, ie.getDescriptive(), newVersionPath +
-                        "/DESCRIPTIVE");
+                addMetadata(session, ie.getDescriptive(), newVersionPath + "/DESCRIPTIVE");
             }
 
             /* add all the representations */
-            addRepresentations(session, ie.getRepresentations(), versionObject
-                    .getNode());
+            addRepresentations(session, ie.getRepresentations(), versionObject.getNode());
             if (entityObject.getNode().hasProperty(HAS_VERSION)) {
-                Value[] current =
-                        entityObject.getNode().getProperty(HAS_VERSION)
-                                .getValues();
+                Value[] current = entityObject.getNode().getProperty(HAS_VERSION).getValues();
                 Value[] newReps = Arrays.copyOf(current, current.length + 1);
-                newReps[newReps.length - 1] =
-                        session.getValueFactory().createValue(newVersionPath);
+                newReps[newReps.length - 1] = session.getValueFactory().createValue(newVersionPath);
                 entityObject.getNode().setProperty(HAS_VERSION, newReps);
             } else {
                 entityObject.getNode().setProperty(HAS_VERSION, newVersionPath);
             }
-            entityObject.getNode().setProperty(HAS_CURRENT_VERSION,
-                    newVersionPath);
+            entityObject.getNode().setProperty(HAS_CURRENT_VERSION, newVersionPath);
 
             /* save the changes made to the objects */
             session.save();
@@ -791,11 +665,9 @@ public class ConnectorService {
 
     }
 
-    public void updateRepresentation(Session session, String entityId,
-            String repId, InputStream src) throws RepositoryException {
+    public void updateRepresentation(Session session, String entityId, String repId, InputStream src) throws RepositoryException {
         try {
-            final Representation rep =
-                    (Representation) this.marshaller.deserialize(src);
+            final Representation rep = (Representation) this.marshaller.deserialize(src);
             final List<Representation> representations = new ArrayList<>();
             final IntellectualEntity orig = this.fetchEntity(session, entityId);
             for (Representation r : orig.getRepresentations()) {
@@ -805,14 +677,11 @@ public class ConnectorService {
             }
             representations.add(rep);
 
-            final IntellectualEntity ieUpdate =
-                    new IntellectualEntity.Builder(orig).representations(
-                            representations).build();
+            final IntellectualEntity ieUpdate = new IntellectualEntity.Builder(orig).representations(representations).build();
 
             final ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ieUpdate, sink);
-            this.updateEntity(session, new ByteArrayInputStream(sink
-                    .toByteArray()), entityId);
+            this.updateEntity(session, new ByteArrayInputStream(sink.toByteArray()), entityId);
 
         } catch (JAXBException e) {
             throw new RepositoryException(e);
@@ -820,46 +689,39 @@ public class ConnectorService {
 
     }
 
-    public void updateMetadata(final Session session, final String path,
-            final InputStream src) throws RepositoryException {
+    public void updateMetadata(final Session session, final String path, final InputStream src) throws RepositoryException {
         String[] ids = path.split("/");
         final String entityId = ids[0];
         final String metadataName = ids[ids.length - 1];
         switch (ids.length) {
-            case 2:
-                /* it's entity metadata */
-                updateEntityMetadata(session, entityId, metadataName, src);
-                break;
-            case 3:
-                /* it's rep metadata */
-                updateRepresentationMetadata(session, entityId, ids[1],
-                        metadataName, src);
-                break;
-            case 4:
-                /* it's file metadata */
-                updateFileMetadata(session, entityId, ids[1], ids[2],
-                        metadataName, src);
-                break;
-            case 5:
-                /* it's bitstream metadata */
-                updateBitStreamMetadata(session, entityId, ids[1], ids[2],
-                        ids[3], metadataName, src);
-                break;
-            default:
-                throw new RepositoryException(
-                        "Unable to parse path for metadata update");
+        case 2:
+            /* it's entity metadata */
+            updateEntityMetadata(session, entityId, metadataName, src);
+            break;
+        case 3:
+            /* it's rep metadata */
+            updateRepresentationMetadata(session, entityId, ids[1], metadataName, src);
+            break;
+        case 4:
+            /* it's file metadata */
+            updateFileMetadata(session, entityId, ids[1], ids[2], metadataName, src);
+            break;
+        case 5:
+            /* it's bitstream metadata */
+            updateBitStreamMetadata(session, entityId, ids[1], ids[2], ids[3], metadataName, src);
+            break;
+        default:
+            throw new RepositoryException("Unable to parse path for metadata update");
         }
     }
 
-    private void updateBitStreamMetadata(Session session, String entityId,
-            String repId, String fileId, String bsId, String metadataName,
-            InputStream src) throws RepositoryException {
+    private void updateBitStreamMetadata(Session session, String entityId, String repId, String fileId, String bsId, String metadataName, InputStream src)
+            throws RepositoryException {
 
         try {
 
             if (!metadataName.equals("TECHNICAL")) {
-                throw new RepositoryException("Unknown metadata type " +
-                        metadataName);
+                throw new RepositoryException("Unknown metadata type " + metadataName);
             }
             final Object metadata = this.marshaller.deserialize(src);
 
@@ -869,8 +731,7 @@ public class ConnectorService {
                 if (!r.getIdentifier().getValue().equals(repId)) {
                     representations.add(r);
                 } else {
-                    Representation.Builder newRep =
-                            new Representation.Builder(r);
+                    Representation.Builder newRep = new Representation.Builder(r);
                     List<File> files = new ArrayList<>();
                     for (File f : r.getFiles()) {
                         if (!f.getIdentifier().getValue().equals(fileId)) {
@@ -882,10 +743,7 @@ public class ConnectorService {
                                 if (!bs.getIdentifier().getValue().equals(bsId)) {
                                     bitstreams.add(bs);
                                 } else {
-                                    BitStream newBs =
-                                            new BitStream.Builder(bs)
-                                                    .technical(metadata)
-                                                    .build();
+                                    BitStream newBs = new BitStream.Builder(bs).technical(metadata).build();
                                     bitstreams.add(newBs);
                                 }
                             }
@@ -898,28 +756,23 @@ public class ConnectorService {
                 }
             }
 
-            final IntellectualEntity ieUpdate =
-                    new IntellectualEntity.Builder(orig).representations(
-                            representations).build();
+            final IntellectualEntity ieUpdate = new IntellectualEntity.Builder(orig).representations(representations).build();
 
             final ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ieUpdate, sink);
-            this.updateEntity(session, new ByteArrayInputStream(sink
-                    .toByteArray()), entityId);
+            this.updateEntity(session, new ByteArrayInputStream(sink.toByteArray()), entityId);
 
         } catch (JAXBException e) {
             throw new RepositoryException(e);
         }
     }
 
-    private void updateFileMetadata(Session session, String entityId,
-            String repId, String fileId, String metadataName, InputStream src)
+    private void updateFileMetadata(Session session, String entityId, String repId, String fileId, String metadataName, InputStream src)
             throws RepositoryException {
         try {
 
             if (!metadataName.equals("TECHNICAL")) {
-                throw new RepositoryException("Unknown metadata type " +
-                        metadataName);
+                throw new RepositoryException("Unknown metadata type " + metadataName);
             }
             final Object metadata = this.marshaller.deserialize(src);
 
@@ -929,16 +782,13 @@ public class ConnectorService {
                 if (!r.getIdentifier().getValue().equals(repId)) {
                     representations.add(r);
                 } else {
-                    Representation.Builder newRep =
-                            new Representation.Builder(r);
+                    Representation.Builder newRep = new Representation.Builder(r);
                     List<File> files = new ArrayList<>();
                     for (File f : r.getFiles()) {
                         if (!f.getIdentifier().getValue().equals(fileId)) {
                             files.add(f);
                         } else {
-                            File newFile =
-                                    new File.Builder(f).technical(metadata)
-                                            .build();
+                            File newFile = new File.Builder(f).technical(metadata).build();
                             files.add(newFile);
                         }
                     }
@@ -947,32 +797,23 @@ public class ConnectorService {
                 }
             }
 
-            final IntellectualEntity ieUpdate =
-                    new IntellectualEntity.Builder(orig).representations(
-                            representations).build();
+            final IntellectualEntity ieUpdate = new IntellectualEntity.Builder(orig).representations(representations).build();
 
             final ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ieUpdate, sink);
-            this.updateEntity(session, new ByteArrayInputStream(sink
-                    .toByteArray()), entityId);
+            this.updateEntity(session, new ByteArrayInputStream(sink.toByteArray()), entityId);
 
         } catch (JAXBException e) {
             throw new RepositoryException(e);
         }
     }
 
-    private void updateRepresentationMetadata(Session session, String entityId,
-            String repId, String metadataName, InputStream src)
-            throws RepositoryException {
+    private void updateRepresentationMetadata(Session session, String entityId, String repId, String metadataName, InputStream src) throws RepositoryException {
 
         try {
 
-            if (!(metadataName.equals("TECHNICAL") ||
-                    metadataName.equals("SOURCE") ||
-                    metadataName.equals("PROVENANCE") || metadataName
-                        .equals("RIGHTS"))) {
-                throw new RepositoryException("Unknown metadata type " +
-                        metadataName);
+            if (!(metadataName.equals("TECHNICAL") || metadataName.equals("SOURCE") || metadataName.equals("PROVENANCE") || metadataName.equals("RIGHTS"))) {
+                throw new RepositoryException("Unknown metadata type " + metadataName);
             }
             final Object metadata = this.marshaller.deserialize(src);
 
@@ -982,8 +823,7 @@ public class ConnectorService {
                 if (!r.getIdentifier().getValue().equals(repId)) {
                     representations.add(r);
                 } else {
-                    Representation.Builder newRep =
-                            new Representation.Builder(r);
+                    Representation.Builder newRep = new Representation.Builder(r);
                     if (metadataName.equals("TECHNICAL")) {
                         newRep.technical(metadata);
                     } else if (metadataName.equals("SOURCE")) {
@@ -997,110 +837,81 @@ public class ConnectorService {
                 }
             }
 
-            final IntellectualEntity ieUpdate =
-                    new IntellectualEntity.Builder(orig).representations(
-                            representations).build();
+            final IntellectualEntity ieUpdate = new IntellectualEntity.Builder(orig).representations(representations).build();
 
             final ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ieUpdate, sink);
-            this.updateEntity(session, new ByteArrayInputStream(sink
-                    .toByteArray()), entityId);
+            this.updateEntity(session, new ByteArrayInputStream(sink.toByteArray()), entityId);
 
         } catch (JAXBException e) {
             throw new RepositoryException(e);
         }
     }
 
-    private void updateEntityMetadata(Session session, String entityId,
-            String metadataName, InputStream src) throws RepositoryException {
+    private void updateEntityMetadata(Session session, String entityId, String metadataName, InputStream src) throws RepositoryException {
         try {
             final IntellectualEntity orig = this.fetchEntity(session, entityId);
             if (!metadataName.equals("DESCRIPTIVE")) {
-                throw new RepositoryException("Unknown metadata type " +
-                        metadataName);
+                throw new RepositoryException("Unknown metadata type " + metadataName);
             }
             final Object desc = this.marshaller.deserialize(src);
-            final IntellectualEntity ieUpdate =
-                    new IntellectualEntity.Builder(orig).descriptive(desc)
-                            .build();
+            final IntellectualEntity ieUpdate = new IntellectualEntity.Builder(orig).descriptive(desc).build();
 
             final ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ieUpdate, sink);
-            this.updateEntity(session, new ByteArrayInputStream(sink
-                    .toByteArray()), entityId);
+            this.updateEntity(session, new ByteArrayInputStream(sink.toByteArray()), entityId);
 
         } catch (JAXBException e) {
             throw new RepositoryException(e);
         }
     }
 
-    private String getFirstLiteralString(Model model, Resource subject,
-            String propertyName) {
+    private String getFirstLiteralString(Model model, Resource subject, String propertyName) {
 
         final Property p = model.createProperty(propertyName);
-        final StmtIterator it =
-                model.listStatements(subject, p, (RDFNode) null);
+        final StmtIterator it = model.listStatements(subject, p, (RDFNode) null);
         return it.next().getLiteral().getString();
     }
 
-    private List<String> getLiteralStrings(Model model, Resource subject,
-            String propertyName) {
+    private List<String> getLiteralStrings(Model model, Resource subject, String propertyName) {
         final List<String> result = new ArrayList<>();
         final Property p = model.createProperty(propertyName);
-        final StmtIterator it =
-                model.listStatements(subject, p, (RDFNode) null);
+        final StmtIterator it = model.listStatements(subject, p, (RDFNode) null);
         while (it.hasNext()) {
             result.add(it.next().getLiteral().getString());
         }
         return result;
     }
 
-    public String queueEntityForIngest(final Session session,
-            final InputStream src) throws RepositoryException {
+    public String queueEntityForIngest(final Session session, final InputStream src) throws RepositoryException {
         try {
             /* try to deserialize and extraxt an existing id */
-            IntellectualEntity ie =
-                    this.marshaller.deserialize(IntellectualEntity.class, src);
-            String id =
-                    (ie.getIdentifier() == null ||
-                            ie.getIdentifier().getValue() == null || ie
-                            .getIdentifier().getValue().length() == 0) ? UUID
-                            .randomUUID().toString() : ie.getIdentifier()
-                            .getValue();
+            IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, src);
+            String id = (ie.getIdentifier() == null || ie.getIdentifier().getValue() == null || ie.getIdentifier().getValue().length() == 0) ? UUID
+                    .randomUUID().toString() : ie.getIdentifier().getValue();
 
             /* copy the data to a temporary node */
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ie, sink);
-            final FedoraObject queue =
-                    this.objectService.getObject(session, QUEUE_NODE);
-            if (this.objectService.exists(session, "/" + ENTITY_FOLDER + "/" +
-                    id)) {
-                throw new RepositoryException(
-                        "Unable to queue item with id " +
-                                id +
-                                " for ingest since an intellectual entity with that id already esists in the repository");
+            final FedoraObject queue = this.objectService.getObject(session, QUEUE_NODE);
+            if (this.objectService.exists(session, "/" + ENTITY_FOLDER + "/" + id)) {
+                throw new RepositoryException("Unable to queue item with id " + id
+                        + " for ingest since an intellectual entity with that id already esists in the repository");
             }
             if (this.datastreamService.exists(session, QUEUE_NODE + "/" + id)) {
-                throw new RepositoryException("Unable to queue item with id " +
-                        id +
-                        " for ingest since an item with that id is alread in the queue");
+                throw new RepositoryException("Unable to queue item with id " + id + " for ingest since an item with that id is alread in the queue");
             }
-            final Node item =
-                    this.datastreamService.createDatastreamNode(session,
-                            QUEUE_NODE + "/" + id, "text/xml", null,
-                            new ByteArrayInputStream(sink.toByteArray()));
+            final Node item = this.datastreamService.createDatastreamNode(session, QUEUE_NODE + "/" + id, "text/xml", null,
+                    new ByteArrayInputStream(sink.toByteArray()));
             item.setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE, "QUEUED");
             /* update the ingest queue */
             if (queue.getNode().hasProperty(HAS_ITEM)) {
-                Value[] current =
-                        queue.getNode().getProperty(HAS_ITEM).getValues();
+                Value[] current = queue.getNode().getProperty(HAS_ITEM).getValues();
                 Value[] updated = Arrays.copyOf(current, current.length + 1);
-                updated[current.length] =
-                        session.getValueFactory().createValue(item.getPath());
+                updated[current.length] = session.getValueFactory().createValue(item.getPath());
                 queue.getNode().setProperty(HAS_ITEM, updated);
             } else {
-                queue.getNode().setProperty(HAS_ITEM,
-                        new String[] {item.getPath()});
+                queue.getNode().setProperty(HAS_ITEM, new String[] { item.getPath() });
             }
             session.save();
             return id;
@@ -1110,62 +921,42 @@ public class ConnectorService {
 
     }
 
-    public LifecycleState fetchLifeCycleState(Session session, String entityId)
-            throws RepositoryException {
+    public LifecycleState fetchLifeCycleState(Session session, String entityId) throws RepositoryException {
         /* check the async queue for the entity */
-        final FedoraObject queueObject =
-                this.objectService.getObject(session, QUEUE_NODE);
+        final FedoraObject queueObject = this.objectService.getObject(session, QUEUE_NODE);
         final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri =
-                subjects.getGraphSubject(queueObject.getNode()).getURI();
-        final Model queueModel =
-                SerializationUtils.unifyDatasetModel(queueObject
-                        .getPropertiesDataset(subjects));
+        final String uri = subjects.getGraphSubject(queueObject.getNode()).getURI();
+        final Model queueModel = SerializationUtils.unifyDatasetModel(queueObject.getPropertiesDataset(subjects));
         final Resource parent = queueModel.createResource(uri);
-        final List<String> asyncIds =
-                this.getLiteralStrings(queueModel, parent, HAS_ITEM);
+        final List<String> asyncIds = this.getLiteralStrings(queueModel, parent, HAS_ITEM);
         if (asyncIds.contains(QUEUE_NODE + "/" + entityId)) {
-            String state =
-                    this.datastreamService.getDatastreamNode(session,
-                            QUEUE_NODE + "/" + entityId).getProperties(
-                            ScapeRDFVocabulary.HAS_INGEST_STATE).nextProperty()
-                            .getString();;
+            String state = this.datastreamService.getDatastreamNode(session, QUEUE_NODE + "/" + entityId).getProperties(ScapeRDFVocabulary.HAS_INGEST_STATE)
+                    .nextProperty().getString();
+            ;
             switch (state) {
-                case "INGESTING":
-                    return new LifecycleState("", State.INGESTING);
-                case "INGEST_FAILED":
-                    return new LifecycleState("", State.INGEST_FAILED);
-                case "QUEUED":
-                    return new LifecycleState("", State.INGESTING);
-                default:
-                    break;
+            case "INGESTING":
+                return new LifecycleState("", State.INGESTING);
+            case "INGEST_FAILED":
+                return new LifecycleState("", State.INGEST_FAILED);
+            case "QUEUED":
+                return new LifecycleState("", State.INGESTING);
+            default:
+                break;
             }
         }
 
         /* check if the entity exists */
-        if (this.objectService.exists(session, "/" + ENTITY_FOLDER + "/" +
-                entityId)) {
+        if (this.objectService.exists(session, "/" + ENTITY_FOLDER + "/" + entityId)) {
             /* fetch the state form the entity itself */
-            final FedoraObject entityObject =
-                    this.objectService.getObject(session, "/" + ENTITY_FOLDER +
-                            "/" + entityId);
-            final String entityUri =
-                    subjects.getGraphSubject(entityObject.getNode()).getURI();
-            final Model entityModel =
-                    SerializationUtils.unifyDatasetModel(entityObject
-                            .getPropertiesDataset(subjects));
+            final FedoraObject entityObject = this.objectService.getObject(session, "/" + ENTITY_FOLDER + "/" + entityId);
+            final String entityUri = subjects.getGraphSubject(entityObject.getNode()).getURI();
+            final Model entityModel = SerializationUtils.unifyDatasetModel(entityObject.getPropertiesDataset(subjects));
             final Resource subject = entityModel.createResource(entityUri);
-            final String state =
-                    this.getFirstLiteralString(entityModel, subject,
-                            HAS_LIFECYCLESTATE);
-            final String details =
-                    this.getFirstLiteralString(entityModel, subject,
-                            HAS_LIFECYCLESTATE_DETAILS);
-            return new LifecycleState(details, LifecycleState.State
-                    .valueOf(state));
+            final String state = this.getFirstLiteralString(entityModel, subject, HAS_LIFECYCLESTATE);
+            final String details = this.getFirstLiteralString(entityModel, subject, HAS_LIFECYCLESTATE_DETAILS);
+            return new LifecycleState(details, LifecycleState.State.valueOf(state));
         } else {
-            throw new ItemNotFoundException("Unable to find lifecycle for '" +
-                    entityId + "'");
+            throw new ItemNotFoundException("Unable to find lifecycle for '" + entityId + "'");
         }
 
     }
@@ -1179,28 +970,22 @@ public class ConnectorService {
         List<String> items = getItemsFromQueue(session);
         session.save();
         for (String item : items) {
-            final Datastream ds =
-                    this.datastreamService.getDatastream(session, item);
+            final Datastream ds = this.datastreamService.getDatastream(session, item);
             /* update the ingest state so that it won't get ingested twice */
             try {
                 final Transaction tx = txService.beginTransaction(sessionFactory.getInternalSession());
-                ds.getNode().setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE,
-                        "INGESTING");
-                addEntity(session, ds.getContent(), item.substring(QUEUE_NODE
-                        .length() + 1), tx);
+                ds.getNode().setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE, "INGESTING");
+                addEntity(session, ds.getContent(), item.substring(QUEUE_NODE.length() + 1), tx);
                 deleteFromQueue(session, item);
                 txService.commit(tx.getId());
             } catch (Exception e) {
-                ds.getNode().setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE,
-                        "INGEST_FAILED");
+                ds.getNode().setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE, "INGEST_FAILED");
             }
         }
     }
 
-    private void deleteFromQueue(final Session session, final String item)
-            throws RepositoryException {
-        final FedoraObject queueObject =
-                this.objectService.getObject(session, QUEUE_NODE);
+    private void deleteFromQueue(final Session session, final String item) throws RepositoryException {
+        final FedoraObject queueObject = this.objectService.getObject(session, QUEUE_NODE);
         if (queueObject.getNode().hasProperty(HAS_ITEM)) {
             Value[] current = queueObject.getNode().getProperty(HAS_ITEM).getValues();
             Value[] updated = new Value[current.length - 1];
@@ -1211,28 +996,25 @@ public class ConnectorService {
                 }
             }
             queueObject.getNode().setProperty(HAS_ITEM, updated);
-        }else {
+        } else {
             throw new RepositoryException("Queue is empty! Unable to remove item " + item);
         }
         this.nodeService.deleteObject(session, item);
         session.save();
     }
 
-    private List<String> getItemsFromQueue(final Session session)
-            throws RepositoryException {
-        final FedoraObject queueObject =
-                this.objectService.getObject(session, QUEUE_NODE);
+    private List<String> getItemsFromQueue(final Session session) throws RepositoryException {
+        final FedoraObject queueObject = this.objectService.getObject(session, QUEUE_NODE);
         final List<String> queueItems = new ArrayList<>();
         if (queueObject.getNode().hasProperty(HAS_ITEM)) {
-            for (final Value v: queueObject.getNode().getProperty(HAS_ITEM).getValues()) {
+            for (final Value v : queueObject.getNode().getProperty(HAS_ITEM).getValues()) {
                 queueItems.add(v.getString());
             }
         }
         return queueItems;
     }
 
-    public IntellectualEntityCollection fetchEntites(final Session session,
-            final List<String> paths) throws RepositoryException {
+    public IntellectualEntityCollection fetchEntites(final Session session, final List<String> paths) throws RepositoryException {
         List<IntellectualEntity> entities = new ArrayList<>();
         for (String path : paths) {
             path = path.substring(path.indexOf("/scape/entity") + 14);
@@ -1241,40 +1023,29 @@ public class ConnectorService {
         return new IntellectualEntityCollection(entities);
     }
 
-    public List<String> searchEntities(Session session, String terms,
-            int offset, int limit) throws RepositoryException {
+    public List<String> searchEntities(Session session, String terms, int offset, int limit) throws RepositoryException {
 
-        return searchObjectOfType(session, "scape:intellectual-entity", terms,
-                offset, limit);
+        return searchObjectOfType(session, "scape:intellectual-entity", terms, offset, limit);
     }
 
-    public List<String> searchRepresentations(Session session, String terms,
-            int offset, int limit) throws RepositoryException {
-        return searchObjectOfType(session, "scape:representation", terms,
-                offset, limit);
+    public List<String> searchRepresentations(Session session, String terms, int offset, int limit) throws RepositoryException {
+        return searchObjectOfType(session, "scape:representation", terms, offset, limit);
     }
 
-    public List<String> searchFiles(Session session, String terms, int offset,
-            int limit) throws RepositoryException {
+    public List<String> searchFiles(Session session, String terms, int offset, int limit) throws RepositoryException {
         return searchObjectOfType(session, "scape:file", terms, offset, limit);
     }
 
-    public List<String> searchObjectOfType(final Session session,
-            final String mixinType, final String terms, final int offset,
-            final int limit) throws RepositoryException {
-        final QueryManager queryManager =
-                session.getWorkspace().getQueryManager();
+    public List<String> searchObjectOfType(final Session session, final String mixinType, final String terms, final int offset, final int limit)
+            throws RepositoryException {
+        final QueryManager queryManager = session.getWorkspace().getQueryManager();
 
         final QueryObjectModelFactory factory = queryManager.getQOMFactory();
 
-        final Source selector =
-                factory.selector(mixinType, "resourcesSelector");
-        final Constraint constraints =
-                factory.fullTextSearch("resourcesSelector", null, factory
-                        .literal(session.getValueFactory().createValue(terms)));
+        final Source selector = factory.selector(mixinType, "resourcesSelector");
+        final Constraint constraints = factory.fullTextSearch("resourcesSelector", null, factory.literal(session.getValueFactory().createValue(terms)));
 
-        final Query query =
-                factory.createQuery(selector, constraints, null, null);
+        final Query query = factory.createQuery(selector, constraints, null, null);
 
         query.setLimit(limit);
         query.setOffset(offset);

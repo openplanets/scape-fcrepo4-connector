@@ -139,7 +139,11 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             // and register them
             mgr.registerNodeTypes(new NodeTypeDefinition[] {fileType, versionType,
                     entityType, repType, queueType}, true);
-
+            /* make sure that the entities folder exists for ingestion */
+            if (!this.objectService.exists(session, "/" + ConnectorService.ENTITY_FOLDER)) {
+                this.objectService.createObject(session, "/" + ConnectorService.ENTITY_FOLDER);
+            }
+            
             /* make sure that the queue object exists for async ingests */
             this.objectService.createObject(session,
                     ConnectorService.QUEUE_NODE).getNode().addMixin("scape:async-queue");
