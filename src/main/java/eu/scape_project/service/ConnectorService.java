@@ -44,7 +44,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -109,9 +108,9 @@ import gov.loc.videomd.VideoType;
 
 /**
  * Component which does all the interaction with fcrepo4
- * 
+ *
  * @author frank asseg
- * 
+ *
  */
 @Component
 public class ConnectorService {
@@ -379,11 +378,6 @@ public class ConnectorService {
         try {
             /* read the post body into an IntellectualEntity object */
             final IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, src);
-            boolean commitTx = false;
-            if (tx == null) {
-                tx = this.txService.beginTransaction(session);
-                commitTx = true;
-            }
             if (entityId == null) {
                 if (ie.getIdentifier() != null) {
                     entityId = ie.getIdentifier().getValue();
@@ -425,9 +419,7 @@ public class ConnectorService {
             entityObject.getNode().setProperty(HAS_CURRENT_VERSION, versionPath);
 
             /* save the changes made to the objects */
-            if (commitTx) {
-                txService.commit(tx.getId());
-            }
+            session.save();
             return entityId;
 
         } catch (JAXBException e) {
@@ -460,10 +452,16 @@ public class ConnectorService {
 
     private void addFiles(final Session session, final List<File> files, final Node repNode) throws RepositoryException {
 
+        int bucketCount = 1;
+        int fileCount = 0;
+        String currentFolder = "bucket-" + bucketCount;
         for (File f : files) {
-
+            if (fileCount++ % 8 == 0 ) {
+                // create a new bucket for the files
+                currentFolder = "bucket-" + ++bucketCount;
+            }
             final String fileId = (f.getIdentifier() != null) ? f.getIdentifier().getValue() : UUID.randomUUID().toString();
-            final String filePath = repNode.getPath() + "/" + fileId;
+            final String filePath = repNode.getPath() + "/" + currentFolder + "/" + fileId;
 
             URI fileUri = f.getUri();
             if (fileUri.getScheme() == null) {
