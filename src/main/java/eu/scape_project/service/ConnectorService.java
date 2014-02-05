@@ -378,6 +378,11 @@ public class ConnectorService {
         try {
             /* read the post body into an IntellectualEntity object */
             final IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, src);
+            boolean commitTx = false;
+            if (tx == null) {
+                tx = this.txService.beginTransaction(session);
+                commitTx = true;
+            }
             if (entityId == null) {
                 if (ie.getIdentifier() != null) {
                     entityId = ie.getIdentifier().getValue();
@@ -419,7 +424,9 @@ public class ConnectorService {
             entityObject.getNode().setProperty(HAS_CURRENT_VERSION, versionPath);
 
             /* save the changes made to the objects */
-            session.save();
+            if (commitTx) {
+                txService.commit(tx.getId());
+            }
             return entityId;
 
         } catch (JAXBException e) {
