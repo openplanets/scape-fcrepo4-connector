@@ -66,7 +66,6 @@ import javax.xml.bind.JAXBException;
 import org.fcrepo.http.commons.session.SessionFactory;
 import org.fcrepo.kernel.Datastream;
 import org.fcrepo.kernel.FedoraObject;
-import org.fcrepo.kernel.Transaction;
 import org.fcrepo.kernel.exception.InvalidChecksumException;
 import org.fcrepo.kernel.rdf.SerializationUtils;
 import org.fcrepo.kernel.rdf.impl.DefaultGraphSubjects;
@@ -371,10 +370,6 @@ public class ConnectorService {
     }
 
     public String addEntity(final Session session, final InputStream src, String entityId) throws RepositoryException {
-        return addEntity(session, src, entityId, null);
-    }
-
-    public String addEntity(final Session session, final InputStream src, String entityId, Transaction tx) throws RepositoryException {
         try {
             /* read the post body into an IntellectualEntity object */
             final IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, src);
@@ -400,6 +395,8 @@ public class ConnectorService {
 
             final FedoraObject versionObject = objectService.createObject(session, versionPath);
             versionObject.getNode().addMixin("scape:intellectual-entity-version");
+
+            session.save();
 
             /* add the metadata datastream for descriptive metadata */
             if (ie.getDescriptive() != null) {
@@ -428,6 +425,7 @@ public class ConnectorService {
         }
     }
 
+
     private void addBitStreams(final Session session, final List<BitStream> bitStreams, final Node fileNode) throws RepositoryException {
         int count = 0;
         for (BitStream bs : bitStreams) {
@@ -437,6 +435,7 @@ public class ConnectorService {
             if (bs.getTechnical() != null) {
                 addMetadata(session, bs.getTechnical(), bsPath + "/TECHNICAL");
             }
+            session.save();
             final String bsType = (bs.getType() != null) ? bs.getType().name() : BitStream.Type.STREAM.name();
             bsObject.getNode().setProperty(HAS_TYPE, "bitstream");
             bsObject.getNode().setProperty(HAS_BITSTREAM_TYPE, bsType);
@@ -475,6 +474,7 @@ public class ConnectorService {
             /* create a datastream in fedora for this file */
             final FedoraObject fileObject = this.objectService.createObject(session, filePath);
             fileObject.getNode().addMixin("scape:file");
+            session.save();
 
             /* add the metadata */
             if (f.getTechnical() != null) {
@@ -600,6 +600,7 @@ public class ConnectorService {
             final String repPath = versionNode.getPath() + "/" + repId;
             final FedoraObject repObject = objectService.createObject(session, repPath);
             repObject.getNode().addMixin("scape:representation");
+            session.save();
 
             /* add the metadatasets of the rep as datastreams */
             if (rep.getTechnical() != null) {
@@ -982,11 +983,9 @@ public class ConnectorService {
             final Datastream ds = this.datastreamService.getDatastream(session, item);
             /* update the ingest state so that it won't get ingested twice */
             try {
-                final Transaction tx = txService.beginTransaction(sessionFactory.getInternalSession());
                 ds.getNode().setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE, "INGESTING");
-                addEntity(session, ds.getContent(), item.substring(QUEUE_NODE.length() + 1), tx);
+                addEntity(session, ds.getContent(), item.substring(QUEUE_NODE.length() + 1));
                 deleteFromQueue(session, item);
-                txService.commit(tx.getId());
             } catch (Exception e) {
                 ds.getNode().setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE, "INGEST_FAILED");
             }
