@@ -455,6 +455,7 @@ public class ConnectorService {
                 fileNode.setProperty(HAS_BITSTREAM, new String[] { bsPath });
             }
         }
+        session.save();
     }
 
     private void addFiles(final Session session, final List<File> files, final Node repNode) throws RepositoryException {
@@ -519,6 +520,7 @@ public class ConnectorService {
                 }
             }
         }
+        session.save();
     }
 
     private void addMetadata(final Session session, final Object metadata, final String path) throws RepositoryException {
@@ -627,6 +629,7 @@ public class ConnectorService {
             } else {
                 versionNode.setProperty(HAS_REPRESENTATION, new String[] { repPath });
             }
+            session.save();
         }
     }
 
