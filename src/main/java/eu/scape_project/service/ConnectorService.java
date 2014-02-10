@@ -378,11 +378,6 @@ public class ConnectorService {
         try {
             /* read the post body into an IntellectualEntity object */
             final IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, src);
-            boolean commitTx = false;
-            if (tx == null) {
-                tx = this.txService.beginTransaction(session);
-                commitTx = true;
-            }
             if (entityId == null) {
                 if (ie.getIdentifier() != null) {
                     entityId = ie.getIdentifier().getValue();
@@ -424,9 +419,7 @@ public class ConnectorService {
             entityObject.getNode().setProperty(HAS_CURRENT_VERSION, versionPath);
 
             /* save the changes made to the objects */
-            if (commitTx) {
-                txService.commit(tx.getId());
-            }
+            session.save();
             return entityId;
 
         } catch (JAXBException e) {
@@ -436,6 +429,7 @@ public class ConnectorService {
     }
 
     private void addBitStreams(final Session session, final List<BitStream> bitStreams, final Node fileNode) throws RepositoryException {
+        int count = 0;
         for (BitStream bs : bitStreams) {
             final String bsId = (bs.getIdentifier() != null) ? bs.getIdentifier().getValue() : UUID.randomUUID().toString();
             final String bsPath = fileNode.getPath() + "/" + bsId;
@@ -454,8 +448,10 @@ public class ConnectorService {
             } else {
                 fileNode.setProperty(HAS_BITSTREAM, new String[] { bsPath });
             }
+            if (++count % 10 == 0) {
+                session.save();
+            }
         }
-        session.save();
     }
 
     private void addFiles(final Session session, final List<File> files, final Node repNode) throws RepositoryException {
@@ -519,8 +515,10 @@ public class ConnectorService {
                     throw new RepositoryException(e);
                 }
             }
+            if (fileCount % 10 == 0) {
+                session.save();
+            }
         }
-        session.save();
     }
 
     private void addMetadata(final Session session, final Object metadata, final String path) throws RepositoryException {
@@ -596,6 +594,7 @@ public class ConnectorService {
     }
 
     private void addRepresentations(final Session session, final List<Representation> representations, final Node versionNode) throws RepositoryException {
+        int count = 0;
         for (Representation rep : representations) {
             final String repId = (rep.getIdentifier() != null) ? rep.getIdentifier().getValue() : UUID.randomUUID().toString();
             final String repPath = versionNode.getPath() + "/" + repId;
@@ -629,7 +628,9 @@ public class ConnectorService {
             } else {
                 versionNode.setProperty(HAS_REPRESENTATION, new String[] { repPath });
             }
-            session.save();
+            if (++count % 10 == 0) {
+                session.save();
+            }
         }
     }
 
