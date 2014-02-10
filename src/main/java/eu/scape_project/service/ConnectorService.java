@@ -460,7 +460,7 @@ public class ConnectorService {
         int fileCount = 0;
         String currentFolder = "bucket-" + bucketCount;
         for (File f : files) {
-            if (fileCount++ % 8 == 0 ) {
+            if (fileCount++ % 64 == 0 ) {
                 // create a new bucket for the files
                 currentFolder = "bucket-" + ++bucketCount;
             }
