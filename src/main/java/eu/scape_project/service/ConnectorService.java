@@ -920,7 +920,7 @@ public class ConnectorService {
             }
             session.save();
             return id;
-        } catch (IOException | InvalidChecksumException | JAXBException e) {
+        } catch (InvalidChecksumException | JAXBException e) {
             throw new RepositoryException(e);
         }
 
