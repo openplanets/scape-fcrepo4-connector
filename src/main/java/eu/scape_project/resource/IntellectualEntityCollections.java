@@ -44,9 +44,9 @@ import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * JAX-RS Resource for Intellectual Entity Collections
- *
+ * 
  * @author frank asseg
- *
+ * 
  */
 @Component
 @Scope("prototype")
@@ -61,32 +61,37 @@ public class IntellectualEntityCollections {
     @InjectedSession
     private Session session;
 
-    public IntellectualEntityCollections()
-            throws JAXBException {
+    public IntellectualEntityCollections() throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
+    /**
+     * Retrieve an {@link IntellectualEntityCollection} from the repository
+     * 
+     * @param src
+     *            the {@link InputStream} containing a text/uri-list of the
+     *            representations to fetch
+     * @return a {@link Response} which maps to a corresponding HTTP response,
+     *         containing the XML representation of an
+     *         {@link IntellectualEntityCollection}
+     * @throws RepositoryException
+     */
     @POST
     @Produces(MediaType.TEXT_XML)
     @Consumes("text/uri-list")
-    public Response retrieveEntityCollection(final InputStream src)
-            throws RepositoryException {
+    public Response retrieveEntityCollection(final InputStream src) throws RepositoryException {
         try {
-            List<String> paths =
-                    Arrays.asList(IOUtils.toString(src).split("\n"));
+            List<String> paths = Arrays.asList(IOUtils.toString(src).split("\n"));
 
-            final IntellectualEntityCollection entities =
-                    connectorService.fetchEntites(this.session, paths);
+            final IntellectualEntityCollection entities = connectorService.fetchEntites(this.session, paths);
 
             /* create a streaming METS response using the ScapeMarshaller */
             return Response.ok(new StreamingOutput() {
 
                 @Override
-                public void write(OutputStream output) throws IOException,
-                        WebApplicationException {
+                public void write(OutputStream output) throws IOException, WebApplicationException {
                     try {
-                        IntellectualEntityCollections.this.marshaller
-                                .serialize(entities, output);
+                        IntellectualEntityCollections.this.marshaller.serialize(entities, output);
                     } catch (JAXBException e) {
                         throw new IOException(e);
                     }

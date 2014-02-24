@@ -34,15 +34,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import eu.scape_project.model.IntellectualEntity;
 import eu.scape_project.model.LifecycleState;
 import eu.scape_project.service.ConnectorService;
 import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * JAX-RS Resource for life cycle states
- *
+ * 
  * @author frank asseg
- *
+ * 
  */
 @Component
 @Scope("prototype")
@@ -57,23 +58,32 @@ public class LifeCycleStates {
     @InjectedSession
     private Session session;
 
-    public LifeCycleStates()
-            throws JAXBException {
+    public LifeCycleStates() throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
+    /**
+     * Exposes an HTTP end point to fetch the {@link LifecycleState} of an
+     * {@link IntellectualEntity}
+     * 
+     * @param entityId
+     *            the {@link IntellectualEntity}'s id
+     * @return a {@link Response} which maps to a corresponding HTTP response,
+     *         containing a XML representation of the {@link LifecycleState}
+     * @throws RepositoryException
+     *             if an error occurred while fetching the
+     *             {@link LifecycleState}
+     */
     @GET
     @Path("{id}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response retrieveLifeCycleState(@PathParam("id")
     final String entityId) throws RepositoryException {
-        final LifecycleState state =
-                connectorService.fetchLifeCycleState(this.session, entityId);
+        final LifecycleState state = connectorService.fetchLifeCycleState(this.session, entityId);
         return Response.ok(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 try {
                     LifeCycleStates.this.marshaller.serialize(state, output);
                 } catch (JAXBException e) {
