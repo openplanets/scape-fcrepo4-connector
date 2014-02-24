@@ -41,15 +41,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import eu.scape_project.model.File;
 import eu.scape_project.model.IntellectualEntity;
 import eu.scape_project.service.ConnectorService;
 import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * JAX-RS Resource for Intellectual Entities
- *
+ * 
  * @author frank asseg
- *
+ * 
  */
 @Component
 @Scope("prototype")
@@ -64,19 +65,41 @@ public class IntellectualEntities {
     @InjectedSession
     private Session session;
 
-    public IntellectualEntities()
-            throws JAXBException {
+    public IntellectualEntities() throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
+    /**
+     * Exposes an HTTP end point to Ingest an {@link IntellectualEntity} as
+     * defined in the Connector API
+     * 
+     * @param src
+     *            An {@link InputStream} serving the {@link IntellectualEntity}
+     *            's METS representation
+     * @return a {@link Response} which maps to a corresponding HTTP response
+     * @throws RepositoryException
+     */
     @POST
     @Produces(MediaType.TEXT_PLAIN)
-    public Response ingestEntity(final InputStream src)
-            throws RepositoryException {
+    public Response ingestEntity(final InputStream src) throws RepositoryException {
         String id = connectorService.addEntity(this.session, src);
         return Response.status(Status.CREATED).entity(id).build();
     }
 
+    /**
+     * Exposes a Http end point for retrieving an {@link IntellectualEntity}'s
+     * METS representation
+     * 
+     * @param id
+     *            the id of the entity
+     * @param useReferences
+     *            indicates if {@link File}s actual binary data gets fetched and
+     *            put into the repository or if only a reference to an external
+     *            URI will be maintained
+     * @return a {@link Response} which maps to a corresponding HTTP response
+     * @throws RepositoryException
+     *             if an error occurred
+     */
     @GET
     @Produces(MediaType.TEXT_XML)
     @Path("{id}")
@@ -86,17 +109,14 @@ public class IntellectualEntities {
     final String useReferences) throws RepositoryException {
 
         final boolean refs = useReferences.equalsIgnoreCase("yes");
-        final IntellectualEntity ie =
-                connectorService.fetchEntity(this.session, id);
+        final IntellectualEntity ie = connectorService.fetchEntity(this.session, id);
         /* create a streaming METS response using the ScapeMarshaller */
         return Response.ok(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 try {
-                    IntellectualEntities.this.marshaller.serialize(ie, output,
-                            refs);
+                    IntellectualEntities.this.marshaller.serialize(ie, output, refs);
                 } catch (JAXBException e) {
                     throw new IOException(e);
                 }
@@ -106,26 +126,40 @@ public class IntellectualEntities {
 
     }
 
+    /**
+     * Exposes a Http end point for retrieving an distinct version of an
+     * {@link IntellectualEntity}'s METS representation
+     * 
+     * @param id
+     *            the id of the entity
+     * @param versionNumber
+     *            the id of the version to retrieve
+     * @param useReferences
+     *            indicates if {@link File}s actual binary data gets fetched and
+     *            put into the repository or if only a reference to an external
+     *            URI will be maintained
+     * @return a {@link Response} which maps to a corresponding HTTP response
+     * @throws RepositoryException
+     *             if an error occurred
+     */
     @GET
     @Produces(MediaType.TEXT_XML)
     @Path("{id}/{versionNumber}")
     public Response retrieveEntity(@PathParam("id")
-    final String id, @PathParam("versionNumber") final Integer versionNumber, @QueryParam("useReferences")
+    final String id, @PathParam("versionNumber")
+    final Integer versionNumber, @QueryParam("useReferences")
     @DefaultValue("no")
     final String useReferences) throws RepositoryException {
 
         final boolean refs = useReferences.equalsIgnoreCase("yes");
-        final IntellectualEntity ie =
-                connectorService.fetchEntity(this.session, id, versionNumber);
+        final IntellectualEntity ie = connectorService.fetchEntity(this.session, id, versionNumber);
         /* create a streaming METS response using the ScapeMarshaller */
         return Response.ok(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 try {
-                    IntellectualEntities.this.marshaller.serialize(ie, output,
-                            refs);
+                    IntellectualEntities.this.marshaller.serialize(ie, output, refs);
                 } catch (JAXBException e) {
                     throw new IOException(e);
                 }
@@ -135,9 +169,20 @@ public class IntellectualEntities {
 
     }
 
+    /**
+     * Exposes an HTTP end point to update an {@link IntellectualEntity}
+     * 
+     * @param entityId
+     *            the id of the {@link IntellectualEntity} to update
+     * @param src
+     *            an {@link InputStream} serving the {@link IntellectualEntity}
+     *            's updated METS representation
+     * @return a {@link Response} which maps to a corresponding HTTP response
+     * @throws RepositoryException
+     */
     @PUT
     @Path("{id}")
-    @Consumes({MediaType.TEXT_XML})
+    @Consumes({ MediaType.TEXT_XML })
     public Response updateEntity(@PathParam("id")
     final String entityId, final InputStream src) throws RepositoryException {
         connectorService.updateEntity(this.session, src, entityId);
