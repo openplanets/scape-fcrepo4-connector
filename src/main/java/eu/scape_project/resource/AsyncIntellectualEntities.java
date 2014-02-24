@@ -29,11 +29,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import eu.scape_project.model.IntellectualEntity;
 import eu.scape_project.service.ConnectorService;
 import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * JAX-RS Resource for Intellectual Entities
+ * This implementation exposes the /scape/entity-async endpoint
+ * as specified in the Connector API Documentation
  *
  * @author frank asseg
  *
@@ -51,11 +54,21 @@ public class AsyncIntellectualEntities {
     @InjectedSession
     private Session session;
 
+    /**
+     * Creates and initializes a new {@link AsyncIntellectualEntities}
+     * @throws JAXBException
+     */
     public AsyncIntellectualEntities()
             throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
+    /**
+     * Exposes the HTTP POST endpoint to ingest an entity asynchronously
+     * @param src The {@link IntellectualEntity}'s METS representation
+     * @return A {@link Response} that maps to a corresponding HTTP response code
+     * @throws RepositoryException
+     */
     @POST
     @Produces(MediaType.TEXT_PLAIN)
     public Response ingestEntity(final InputStream src)

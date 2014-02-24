@@ -32,14 +32,17 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import eu.scape_project.model.BitStream;
+import eu.scape_project.model.File;
+import eu.scape_project.model.IntellectualEntity;
+import eu.scape_project.model.Representation;
 import eu.scape_project.service.ConnectorService;
 import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * JAX-RS Resource for BitStreams
- *
+ * 
  * @author frank asseg
- *
+ * 
  */
 
 @Component
@@ -55,11 +58,26 @@ public class Bitstreams {
     @InjectedSession
     private Session session;
 
-    public Bitstreams()
-            throws JAXBException {
+    public Bitstreams() throws JAXBException {
         marshaller = ScapeMarshaller.newInstance();
     }
 
+    /**
+     * Exposes an HTTP GET end point to fetch the current Version of a
+     * {@link BitStream} from the Connector API implementation
+     * 
+     * @param entityId
+     *            The id of the {@link IntellectualEntity}
+     * @param repId
+     *            The id of the {@link Representation}
+     * @param fileId
+     *            The if of the {@link File}
+     * @param bsId
+     *            The id of {@link BitStream}
+     * @return a {@link Response} with a {@link BitStream}'s XML representation
+     * @throws RepositoryException
+     *             If an error occurred while retrieving the resource
+     */
     @GET
     @Path("{entity-id}/{rep-id}/{file-id}/{bitstream-id}")
     public Response retrieveBitstream(@PathParam("entity-id")
@@ -67,15 +85,12 @@ public class Bitstreams {
     final String repId, @PathParam("file-id")
     final String fileId, @PathParam("bitstream-id")
     final String bsId) throws RepositoryException {
-        final String path =
-                "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId + "/" +
-                        repId + "/" + fileId + "/" + bsId;
+        final String path = "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId + "/" + repId + "/" + fileId + "/" + bsId;
         final BitStream bs = connectorService.fetchBitStream(session, path);
         return Response.ok().entity(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 try {
                     Bitstreams.this.marshaller.serialize(bs, output);
                 } catch (JAXBException e) {
@@ -85,6 +100,24 @@ public class Bitstreams {
         }).build();
     }
 
+    /**
+     * Exposes an HTTP GET end point to fetch the current Version of a
+     * {@link BitStream} from the Connector API implementation
+     * 
+     * @param entityId
+     *            The id of the {@link IntellectualEntity}
+     * @param repId
+     *            The id of the {@link Representation}
+     * @param fileId
+     *            The if of the {@link File}
+     * @param bsId
+     *            The id of {@link BitStream}
+     * @param versionId
+     *            The id of {@link BitStream}'s version to retrieve
+     * @return a {@link Response} with a {@link BitStream}'s XML representation
+     * @throws RepositoryException
+     *             If an error occurred while retrieving the resource
+     */
     @GET
     @Path("{entity-id}/{rep-id}/{file-id}/{bitstream-id}/{version-id}")
     public Response retrieveBitstream(@PathParam("entity-id")
@@ -96,20 +129,17 @@ public class Bitstreams {
 
         final String path;
         if (versionId == null) {
-            path = "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId +
-                            "/" + repId + "/" + fileId + "/" + bsId;
+            path = "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId + "/" + repId + "/" + fileId + "/" + bsId;
 
-        }else{
-            path = "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId + "/version-" + versionId +
-                    "/" + repId + "/" + fileId + "/" + bsId;
+        } else {
+            path = "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId + "/version-" + versionId + "/" + repId + "/" + fileId + "/" + bsId;
 
         }
         final BitStream bs = connectorService.fetchBitStream(session, path);
         return Response.ok().entity(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 try {
                     Bitstreams.this.marshaller.serialize(bs, output);
                 } catch (JAXBException e) {
