@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import eu.scape_project.model.BitStream;
 import eu.scape_project.model.File;
 import eu.scape_project.model.IntellectualEntity;
 import eu.scape_project.model.Representation;
@@ -38,9 +39,9 @@ import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * JAX-RS Resource for Files
- *
+ * 
  * @author frank asseg
- *
+ * 
  */
 
 @Component
@@ -56,58 +57,88 @@ public class Files {
     @InjectedSession
     private Session session;
 
-    public Files()
-            throws JAXBException {
+    public Files() throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
+    /**
+     * Exposes an HTTP GET end point witch returns the current version binary
+     * content of a {@link File} or if references are used for files a HTTP
+     * redirect a from the Connector API implementation
+     * 
+     * @param entityId
+     *            the {@link IntellectualEntity}'s id
+     * @param repId
+     *            the {@link Representation}'s id
+     * @param fileId
+     *            the {@link File}'s id
+     * @return A {@link Response} with the binary content or a HTTP redirect
+     * @throws RepositoryException
+     *             if an error occurred while fetching the binary content
+     */
     @GET
     @Path("{entity-id}/{rep-id}/{file-id}")
     public Response retrieveFile(@PathParam("entity-id")
     final String entityId, @PathParam("rep-id")
     final String repId, @PathParam("file-id")
     final String fileId) throws RepositoryException {
-    	if (connectorService.isReferencedContent()) {
-    		IntellectualEntity e = connectorService.fetchEntity(session, entityId);
-    		for (Representation r: e.getRepresentations()) {
-    			if (r.getIdentifier().getValue().equals(repId)){
-    				for (File f:r.getFiles()){
-    					if (f.getIdentifier().getValue().equals(fileId)){
-    						return Response.temporaryRedirect(f.getUri()).build();
-    					}
-    				}
-    			}
-    		}
-    		throw new RepositoryException(new FileNotFoundException());
-    	}else {
-    		final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId, null);
-    		return Response.ok().entity(src).type(src.getContentType()).build();
-    	}
+        if (connectorService.isReferencedContent()) {
+            IntellectualEntity e = connectorService.fetchEntity(session, entityId);
+            for (Representation r : e.getRepresentations()) {
+                if (r.getIdentifier().getValue().equals(repId)) {
+                    for (File f : r.getFiles()) {
+                        if (f.getIdentifier().getValue().equals(fileId)) {
+                            return Response.temporaryRedirect(f.getUri()).build();
+                        }
+                    }
+                }
+            }
+            throw new RepositoryException(new FileNotFoundException());
+        } else {
+            final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId, null);
+            return Response.ok().entity(src).type(src.getContentType()).build();
+        }
     }
 
-
+    /**
+     * Exposes an HTTP GET end point witch returns a version of the binary
+     * content of a {@link File} or if references are used for files a HTTP
+     * redirect a from the Connector API implementation
+     * 
+     * @param entityId
+     *            the {@link IntellectualEntity}'s id
+     * @param repId
+     *            the {@link Representation}'s id
+     * @param fileId
+     *            the {@link File}'s id
+     * @param versionId
+     *            the version's id
+     * @return A {@link Response} with the binary content or a HTTP redirect
+     * @throws RepositoryException
+     *             if an error occurred while fetching the binary content
+     */
     @GET
     @Path("{entity-id}/{rep-id}/{file-id}/{version-id}")
     public Response retrieveFile(@PathParam("entity-id")
     final String entityId, @PathParam("rep-id")
     final String repId, @PathParam("file-id")
-    final String fileId,@PathParam("version-id")
+    final String fileId, @PathParam("version-id")
     final String versionId) throws RepositoryException {
-    	if (connectorService.isReferencedContent()) {
-    		IntellectualEntity e = connectorService.fetchEntity(session, entityId);
-    		for (Representation r: e.getRepresentations()) {
-    			if (r.getIdentifier().getValue().equals(repId)){
-    				for (File f:r.getFiles()){
-    					if (f.getIdentifier().equals(fileId)){
-    						return Response.temporaryRedirect(f.getUri()).build();
-    					}
-    				}
-    			}
-    		}
-    		throw new RepositoryException(new FileNotFoundException());
-    	}else {
-    		final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId, versionId);
-    		return Response.ok().entity(src).type(src.getContentType()).build();
-    	}
+        if (connectorService.isReferencedContent()) {
+            IntellectualEntity e = connectorService.fetchEntity(session, entityId);
+            for (Representation r : e.getRepresentations()) {
+                if (r.getIdentifier().getValue().equals(repId)) {
+                    for (File f : r.getFiles()) {
+                        if (f.getIdentifier().equals(fileId)) {
+                            return Response.temporaryRedirect(f.getUri()).build();
+                        }
+                    }
+                }
+            }
+            throw new RepositoryException(new FileNotFoundException());
+        } else {
+            final ContentTypeInputStream src = connectorService.fetchBinaryFile(this.session, entityId, repId, fileId, versionId);
+            return Response.ok().entity(src).type(src.getContentType()).build();
+        }
     }
 }
