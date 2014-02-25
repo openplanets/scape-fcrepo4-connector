@@ -11,7 +11,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-
 package eu.scape_project.service;
 
 import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_BITSTREAM;
@@ -932,8 +931,8 @@ public class ConnectorService {
      *            the offset of the search results
      * @param limit
      *            the maximum number of results
-     * @return a {@link List} containing the paths of the
-     *         {@link Representation}s found via this search
+     * @return a {@link List} containing the paths of the {@link Representation}
+     *         s found via this search
      * @throws RepositoryException
      */
     public List<String> searchRepresentations(Session session, String terms, int offset, int limit) throws RepositoryException {
@@ -951,23 +950,31 @@ public class ConnectorService {
      *            the offset of the search results
      * @param limit
      *            the maximum number of results
-     * @return a {@link List} containing the paths of the
-     *         {@link File}s found via this search
+     * @return a {@link List} containing the paths of the {@link File}s found
+     *         via this search
      * @throws RepositoryException
      */
     public List<String> searchFiles(Session session, String terms, int offset, int limit) throws RepositoryException {
         return searchObjectOfType(session, "scape:file", terms, offset, limit);
     }
-    
+
     /**
      * Search objects in Fedora with a given JCR Mixin Type using a simple term
-     * @param session the {@link Session} to use for the operation
-     * @param mixinType the mixin type to look for
-     * @param terms the t
+     * 
+     * @param session
+     *            the {@link Session} to use for the operation
+     * @param mixinType
+     *            the mixin type to look for
+     * @param terms
+     *            the search term to match objects against
      * @param offset
+     *            the offset of the search results
      * @param limit
-     * @return
+     *            the maximum number of search results
+     * @return a {@link List} containing the paths of the found objects in
+     *         Fedora
      * @throws RepositoryException
+     *             if an error occurred searching in Fedora
      */
     public List<String> searchObjectOfType(final Session session, final String mixinType, final String terms, final int offset, final int limit)
             throws RepositoryException {

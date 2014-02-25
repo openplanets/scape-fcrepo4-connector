@@ -11,7 +11,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-
 package eu.scape_project.web.listener;
 
 import javax.jcr.PropertyType;
@@ -43,16 +42,17 @@ import eu.scape_project.rdf.ScapeRDFVocabulary;
 import eu.scape_project.service.ConnectorService;
 
 /**
- * A JAX-RS Provider which initializes the webapp
+ * A JAX-RS Provider which initializes the web application by adding the
+ * required namespace and node types to Fedora
+ * 
  * @author frank asseg
- *
+ * 
  */
 @Component
 @Provider
 public class ScapeInitializer implements AbstractResourceModelListener {
 
-    private static final Logger LOG = LoggerFactory
-            .getLogger(ScapeInitializer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ScapeInitializer.class);
 
     @Autowired
     private NodeService nodeService;
@@ -65,6 +65,7 @@ public class ScapeInitializer implements AbstractResourceModelListener {
 
     /*
      * (non-Javadoc)
+     * 
      * @see
      * com.sun.jersey.api.model.AbstractResourceModelListener#onLoaded(com.sun
      * .jersey.api.model.AbstractResourceModelContext)
@@ -74,36 +75,28 @@ public class ScapeInitializer implements AbstractResourceModelListener {
         try {
             final Session session = this.sessionFactory.getInternalSession();
             /* make sure that the scape namespace is available in fcrepo */
-            final Dataset namespace =
-                    this.nodeService.getNamespaceRegistryDataset(session);
-            UpdateAction.parseExecute(
-                    "INSERT {<" + ScapeRDFVocabulary.SCAPE_NAMESPACE + "> <" +
-                            RdfLexicon.HAS_NAMESPACE_PREFIX +
-                            "> \"scape\"} WHERE {}", namespace);
-
+            final Dataset namespace = this.nodeService.getNamespaceRegistryDataset(session);
+            UpdateAction.parseExecute("INSERT {<" + ScapeRDFVocabulary.SCAPE_NAMESPACE + "> <" + RdfLexicon.HAS_NAMESPACE_PREFIX + "> \"scape\"} WHERE {}",
+                    namespace);
 
             /* add the scape node mixin types */
 
             // Get the node type manager ...
-            final NodeTypeManager mgr =
-                    session.getWorkspace().getNodeTypeManager();
+            final NodeTypeManager mgr = session.getWorkspace().getNodeTypeManager();
 
             // Create templates for the node types ...
             final NodeTypeTemplate entityType = mgr.createNodeTypeTemplate();
             entityType.setName("scape:intellectual-entity");
-            entityType.setDeclaredSuperTypeNames(new String[] {
-                    "fedora:resource", "fedora:object"});
+            entityType.setDeclaredSuperTypeNames(new String[] { "fedora:resource", "fedora:object" });
             entityType.setMixin(true);
             entityType.setQueryable(true);
             entityType.setAbstract(false);
             entityType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasRepresentation"));
             entityType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasVersion"));
 
-
             final NodeTypeTemplate versionType = mgr.createNodeTypeTemplate();
             versionType.setName("scape:intellectual-entity-version");
-            versionType.setDeclaredSuperTypeNames(new String[] {
-                    "fedora:resource", "fedora:object"});
+            versionType.setDeclaredSuperTypeNames(new String[] { "fedora:resource", "fedora:object" });
             versionType.setMixin(true);
             versionType.setQueryable(true);
             versionType.setAbstract(false);
@@ -111,7 +104,7 @@ public class ScapeInitializer implements AbstractResourceModelListener {
 
             final NodeTypeTemplate repType = mgr.createNodeTypeTemplate();
             repType.setName("scape:representation");
-            repType.setDeclaredSuperTypeNames(new String[] {"fedora:resource", "fedora:object"});
+            repType.setDeclaredSuperTypeNames(new String[] { "fedora:resource", "fedora:object" });
             repType.setMixin(true);
             repType.setQueryable(true);
             repType.setAbstract(false);
@@ -119,30 +112,25 @@ public class ScapeInitializer implements AbstractResourceModelListener {
 
             final NodeTypeTemplate fileType = mgr.createNodeTypeTemplate();
             fileType.setName("scape:file");
-            fileType.setDeclaredSuperTypeNames(new String[] {"fedora:resource",
-                    "fedora:object"});
+            fileType.setDeclaredSuperTypeNames(new String[] { "fedora:resource", "fedora:object" });
             fileType.setMixin(true);
             fileType.setQueryable(true);
             fileType.setAbstract(false);
             fileType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasBitstream"));
 
-
             final NodeTypeTemplate queueType = mgr.createNodeTypeTemplate();
             queueType.setName("scape:async-queue");
-            queueType.setDeclaredSuperTypeNames(new String[] {"fedora:resource",
-                    "fedora:object"});
+            queueType.setDeclaredSuperTypeNames(new String[] { "fedora:resource", "fedora:object" });
             queueType.setMixin(true);
             queueType.setQueryable(true);
             queueType.setAbstract(false);
             queueType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasItem"));
 
             // and register them
-            mgr.registerNodeTypes(new NodeTypeDefinition[] {fileType, versionType,
-                    entityType, repType, queueType}, true);
+            mgr.registerNodeTypes(new NodeTypeDefinition[] { fileType, versionType, entityType, repType, queueType }, true);
 
             /* make sure that the queue object exists for async ingests */
-            this.objectService.createObject(session,
-                    ConnectorService.QUEUE_NODE).getNode().addMixin("scape:async-queue");
+            this.objectService.createObject(session, ConnectorService.QUEUE_NODE).getNode().addMixin("scape:async-queue");
             session.save();
         } catch (RepositoryException e) {
             LOG.error("Error while setting up scape connector api", e);
@@ -151,7 +139,8 @@ public class ScapeInitializer implements AbstractResourceModelListener {
 
     }
 
-    private PropertyDefinitionTemplate createMultiPropertyDefTemplate(final Session session, final NodeTypeManager mgr, final String name) throws UnsupportedRepositoryOperationException, RepositoryException {
+    private PropertyDefinitionTemplate createMultiPropertyDefTemplate(final Session session, final NodeTypeManager mgr, final String name)
+            throws UnsupportedRepositoryOperationException, RepositoryException {
         PropertyDefinitionTemplate propDefn = mgr.createPropertyDefinitionTemplate();
         propDefn.setName(name);
         propDefn.setRequiredType(PropertyType.STRING);

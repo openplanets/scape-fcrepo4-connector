@@ -34,12 +34,11 @@ import eu.scape_project.service.ConnectorService;
 import eu.scape_project.util.ScapeMarshaller;
 
 /**
- * JAX-RS Resource for Intellectual Entities
- * This implementation exposes the /scape/entity-async endpoint
- * as specified in the Connector API Documentation
- *
+ * JAX-RS Resource for Intellectual Entities This implementation exposes the
+ * /scape/entity-async endpoint as specified in the Connector API Documentation
+ * 
  * @author frank asseg
- *
+ * 
  */
 @Component
 @Scope("prototype")
@@ -56,23 +55,27 @@ public class AsyncIntellectualEntities {
 
     /**
      * Creates and initializes a new {@link AsyncIntellectualEntities}
+     * 
      * @throws JAXBException
      */
-    public AsyncIntellectualEntities()
-            throws JAXBException {
+    public AsyncIntellectualEntities() throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
     /**
      * Exposes the HTTP POST endpoint to ingest an entity asynchronously
-     * @param src The {@link IntellectualEntity}'s METS representation
-     * @return A {@link Response} that maps to a corresponding HTTP response code
+     * 
+     * @param src
+     *            The {@link IntellectualEntity}'s METS representation
+     * @return A {@link Response} that maps to a corresponding HTTP response
+     *         code
      * @throws RepositoryException
+     *             If there was an issue queuing this {@link IntellectualEntity}
+     *             for an asynchronous ingest
      */
     @POST
     @Produces(MediaType.TEXT_PLAIN)
-    public Response ingestEntity(final InputStream src)
-            throws RepositoryException {
+    public Response ingestEntity(final InputStream src) throws RepositoryException {
         String id = connectorService.queueEntityForIngest(this.session, src);
         return Response.ok(id).build();
     }
