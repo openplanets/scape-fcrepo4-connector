@@ -12,7 +12,6 @@
    limitations under the License.
  */
 
-
 package eu.scape_project.util;
 
 import java.io.IOException;
@@ -20,8 +19,9 @@ import java.io.InputStream;
 
 /**
  * A typed {@link InputStream} which can hold a Content-Type
+ * 
  * @author frank asseg
- *
+ * 
  */
 public class ContentTypeInputStream extends InputStream {
 
@@ -40,6 +40,11 @@ public class ContentTypeInputStream extends InputStream {
         return src.read();
     }
 
+    /**
+     * Get the Content-Type associated with this {@link InputStream}
+     * 
+     * @return the Content-Type
+     */
     public String getContentType() {
         return contentType;
     }

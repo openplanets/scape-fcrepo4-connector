@@ -1,10 +1,8 @@
-/**
- *
- */
 package eu.scape_project.rdf;
 
 
 /**
+ * This Vocabulary is used to match the scape-platform-datamodel to Fedora's JCR Properties
  * @author frank asseg
  *
  */
