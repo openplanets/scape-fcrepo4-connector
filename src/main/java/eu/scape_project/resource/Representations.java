@@ -34,14 +34,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import eu.scape_project.model.IntellectualEntity;
 import eu.scape_project.model.Representation;
 import eu.scape_project.service.ConnectorService;
 import eu.scape_project.util.ScapeMarshaller;
+
 /**
  * JAX-RS Resource for Representations
- *
+ * 
  * @author frank asseg
- *
+ * 
  */
 
 @Component
@@ -57,11 +59,24 @@ public class Representations {
     @InjectedSession
     private Session session;
 
-    public Representations()
-            throws JAXBException {
+    public Representations() throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
+    /**
+     * Exposes a HTTP end point for retrieving the current version of a
+     * {@link Representation}
+     * 
+     * @param entityId
+     *            the id of the {@link IntellectualEntity}
+     * @param repId
+     *            the id of the {@link Representation}
+     * @return a {@link Response} which maps to a corresponding HTTP response,
+     *         containing the {@link Representation} serialized into a XML
+     *         document
+     * @throws RepositoryException
+     *             if an error occurred while retrieving a Representation
+     */
     @GET
     @Path("{entity-id}/{rep-id}")
     public Response retrieveRepresentation(@PathParam("entity-id")
@@ -71,8 +86,7 @@ public class Representations {
         return Response.ok().entity(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 try {
                     Representations.this.marshaller.serialize(r, output);
                 } catch (JAXBException e) {
@@ -82,17 +96,33 @@ public class Representations {
         }).build();
     }
 
+    /**
+     * Exposes a HTTP end point for retrieving a specific version of a
+     * {@link Representation}
+     * 
+     * @param entityId
+     *            the id of the {@link IntellectualEntity}
+     * @param repId
+     *            the id of the {@link Representation}
+     * @param versionId
+     *            the id of the {@link Representation}'s version
+     * @return a {@link Response} which maps to a corresponding HTTP response,
+     *         containing the {@link Representation} serialized into a XML
+     *         document
+     * @throws RepositoryException
+     *             if an error occurred while retrieving a Representation
+     */
     @GET
     @Path("{entity-id}/{rep-id}/{version-id}")
     public Response retrieveRepresentation(@PathParam("entity-id")
     final String entityId, @PathParam("rep-id")
-    final String repId, @PathParam("version-id") final int versionId) throws RepositoryException {
+    final String repId, @PathParam("version-id")
+    final int versionId) throws RepositoryException {
         final Representation r = connectorService.fetchRepresentation(this.session, entityId, repId, versionId);
         return Response.ok().entity(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 try {
                     Representations.this.marshaller.serialize(r, output);
                 } catch (JAXBException e) {
@@ -102,9 +132,19 @@ public class Representations {
         }).build();
     }
 
+    /**
+     * Exposes a HTTP end point for updating {@link Representation}s
+     * @param entityId the {@link IntellectualEntity}'s id
+     * @param representationId the {@link Representation}'s id
+     * @param src the updated {@link Representation} as a XML document
+     * @return a {@link Response} which maps to a corresponding HTTP response
+     * @throws RepositoryException if en error occurred wihle updating the representation
+     */
     @PUT
     @Path("{entity-id}/{rep-id}")
-    public Response updateRepresentation(@PathParam("entity-id") final String entityId, @PathParam("rep-id") final String representationId, final InputStream src) throws RepositoryException{
+    public Response updateRepresentation(@PathParam("entity-id")
+    final String entityId, @PathParam("rep-id")
+    final String representationId, final InputStream src) throws RepositoryException {
         this.connectorService.updateRepresentation(session, entityId, representationId, src);
         return Response.ok().build();
     }

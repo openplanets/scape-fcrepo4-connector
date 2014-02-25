@@ -177,7 +177,7 @@ public class IntellectualEntities {
      * @param src
      *            an {@link InputStream} serving the {@link IntellectualEntity}
      *            's updated METS representation
-     * @return a {@link Response} which maps to a corresponding HTTP response
+     * @return a {@link Response} which maps to a corresponding HTTP response   
      * @throws RepositoryException
      */
     @PUT

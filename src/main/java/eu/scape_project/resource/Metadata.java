@@ -65,6 +65,12 @@ public class Metadata {
 
     @GET
     @Path("{path: .*}")
+    /**
+     * Expose a HTTP end point for retrieving the metadata of an IntellectualEntity, Representation, File or BitStream
+     * @param path the path describing the location of the metadata in the repository
+     * @return a {@link Response} which maps to a corresponding HTTP response, containing the requested metadata set
+     * @throws RepositoryException if an error occurred while retrieving the metadata
+     */
     public Response retrieveMetadata(@PathParam("path")
     String path) throws RepositoryException {
         path = "/" + ConnectorService.ENTITY_FOLDER + "/" + path;
@@ -83,6 +89,13 @@ public class Metadata {
         }).build();
     }
 
+    /**
+     * Exposes a HTTP end point for updating a specific metadata set
+     * @param path the path describing the location of the metadata in the repository
+     * @param src the updated metadata XML representation
+     * @return a {@link Response} which maps to a corresponding HTTP response
+     * @throws RepositoryException if an error occurred while updating the metadata
+     */
     @PUT
     @Path("{path: .*}")
     @Consumes({MediaType.TEXT_XML})

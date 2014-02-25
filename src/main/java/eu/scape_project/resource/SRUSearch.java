@@ -39,11 +39,12 @@ import eu.scape_project.model.IntellectualEntity;
 import eu.scape_project.model.Representation;
 import eu.scape_project.service.ConnectorService;
 import eu.scape_project.util.ScapeMarshaller;
+
 /**
  * JAX-RS Resource for SRU search
- *
+ * 
  * @author frank asseg
- *
+ * 
  */
 
 @Component
@@ -59,11 +60,31 @@ public class SRUSearch {
 
     private final ScapeMarshaller marshaller;
 
-    public SRUSearch()
-            throws JAXBException {
+    public SRUSearch() throws JAXBException {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
+    /**
+     * Exposes a HTTP end point modeled after the SRU specifications to search
+     * {@link IntellectualEntity}s
+     * 
+     * @param operation
+     *            the operation to perform. Currently only
+     *            <code>searchAndRetrieve</code> are supported
+     * @param query
+     *            the query of the operation. Currently only a
+     *            <code>terms</code> query is supported
+     * @param version
+     *            the version of the SRU reques. Currently only <code>1</code>
+     *            is supported
+     * @param offset
+     *            the offset of the search
+     * @param limit
+     *            the maximum number of results
+     * @return a {@link Response} which maps to a corresponding HTTP response,
+     *         containing the SRU's results as an XML document
+     * @throws RepositoryException
+     */
     @GET
     @Path("/entities")
     public Response searchIntellectualEntities(@QueryParam("operation")
@@ -75,21 +96,15 @@ public class SRUSearch {
     @DefaultValue("25")
     final int limit) throws RepositoryException {
 
-        final List<String> uris =
-                this.connectorService.searchEntities(this.session, query,
-                        offset, limit);
+        final List<String> uris = this.connectorService.searchEntities(this.session, query, offset, limit);
         return Response.ok(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 writeSRUHeader(output, uris.size());
                 for (String uri : uris) {
                     try {
-                        final IntellectualEntity ie =
-                                SRUSearch.this.connectorService.fetchEntity(
-                                        session, uri.substring(uri
-                                                .lastIndexOf('/') + 1));
+                        final IntellectualEntity ie = SRUSearch.this.connectorService.fetchEntity(session, uri.substring(uri.lastIndexOf('/') + 1));
                         writeSRURecord(ie, output);
                     } catch (RepositoryException e) {
                         throw new IOException(e);
@@ -100,6 +115,27 @@ public class SRUSearch {
         }).build();
     }
 
+    /**
+     * Exposes a HTTP end point modeled after the SRU specifications to search
+     * {@link Representation}s
+     * 
+     * @param operation
+     *            the operation to perform. Currently only
+     *            <code>searchAndRetrieve</code> are supported
+     * @param query
+     *            the query of the operation. Currently only a
+     *            <code>terms</code> query is supported
+     * @param version
+     *            the version of the SRU reques. Currently only <code>1</code>
+     *            is supported
+     * @param offset
+     *            the offset of the search
+     * @param limit
+     *            the maximum number of results
+     * @return a {@link Response} which maps to a corresponding HTTP response,
+     *         containing the SRU's results as an XML document
+     * @throws RepositoryException
+     */
     @GET
     @Path("/representations")
     public Response searchRepresentations(@QueryParam("operation")
@@ -110,24 +146,16 @@ public class SRUSearch {
     @DefaultValue("25")
     final int limit) throws RepositoryException {
 
-        final List<String> uris =
-                this.connectorService.searchRepresentations(this.session,
-                        query, offset, limit);
+        final List<String> uris = this.connectorService.searchRepresentations(this.session, query, offset, limit);
         return Response.ok(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 writeSRUHeader(output, uris.size());
                 for (String uri : uris) {
                     try {
-                        final Representation rep =
-                                SRUSearch.this.connectorService
-                                        .fetchRepresentation(
-                                                session,
-                                                uri.substring(uri
-                                                        .indexOf("/" +
-                                                                ConnectorService.ENTITY_FOLDER)));
+                        final Representation rep = SRUSearch.this.connectorService.fetchRepresentation(session,
+                                uri.substring(uri.indexOf("/" + ConnectorService.ENTITY_FOLDER)));
                         writeSRURecord(rep, output);
                     } catch (RepositoryException e) {
                         throw new IOException(e);
@@ -137,6 +165,28 @@ public class SRUSearch {
             }
         }).build();
     }
+
+    /**
+     * Exposes a HTTP end point modeled after the SRU specifications to search
+     * {@link File}s
+     * 
+     * @param operation
+     *            the operation to perform. Currently only
+     *            <code>searchAndRetrieve</code> are supported
+     * @param query
+     *            the query of the operation. Currently only a
+     *            <code>terms</code> query is supported
+     * @param version
+     *            the version of the SRU reques. Currently only <code>1</code>
+     *            is supported
+     * @param offset
+     *            the offset of the search
+     * @param limit
+     *            the maximum number of results
+     * @return a {@link Response} which maps to a corresponding HTTP response,
+     *         containing the SRU's results as an XML document
+     * @throws RepositoryException
+     */
 
     @GET
     @Path("/files")
@@ -148,24 +198,15 @@ public class SRUSearch {
     @DefaultValue("25")
     final int limit) throws RepositoryException {
 
-        final List<String> uris =
-                this.connectorService.searchFiles(this.session, query, offset,
-                        limit);
+        final List<String> uris = this.connectorService.searchFiles(this.session, query, offset, limit);
         return Response.ok(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 writeSRUHeader(output, uris.size());
                 for (String uri : uris) {
                     try {
-                        final File f =
-                                SRUSearch.this.connectorService
-                                        .fetchFile(
-                                                session,
-                                                uri.substring(uri
-                                                        .indexOf("/" +
-                                                                ConnectorService.ENTITY_FOLDER)));
+                        final File f = SRUSearch.this.connectorService.fetchFile(session, uri.substring(uri.indexOf("/" + ConnectorService.ENTITY_FOLDER)));
                         writeSRURecord(f, output);
                     } catch (RepositoryException e) {
                         throw new IOException(e);
@@ -176,8 +217,7 @@ public class SRUSearch {
         }).build();
     }
 
-    private void writeSRURecord(Object o, OutputStream output)
-            throws IOException {
+    private void writeSRURecord(Object o, OutputStream output) throws IOException {
         final StringBuilder sru = new StringBuilder();
         sru.append("<srw:record>");
         sru.append("<srw:recordSchema>http://scapeproject.eu/schema/plato</srw:recordSchema>");
@@ -201,8 +241,7 @@ public class SRUSearch {
         output.write(sru.toString().getBytes());
     }
 
-    private void writeSRUHeader(OutputStream output, int size)
-            throws IOException {
+    private void writeSRUHeader(OutputStream output, int size) throws IOException {
         final StringBuilder sru = new StringBuilder();
         sru.append("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>");
         sru.append("<srw:searchRetrieveResponse xmlns:srw=\"http://scapeproject.eu/srw/\">");

@@ -34,15 +34,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import eu.scape_project.model.IntellectualEntity;
 import eu.scape_project.model.VersionList;
 import eu.scape_project.service.ConnectorService;
 import eu.scape_project.util.ScapeMarshaller;
 
 /**
  * JAX-RS Resource for Intellectual Entity Versions
- *
+ * 
  * @author frank asseg
- *
+ * 
  */
 @Component
 @Scope("prototype")
@@ -61,6 +62,16 @@ public class IntellectualEntityVersions {
         this.marshaller = ScapeMarshaller.newInstance();
     }
 
+    /**
+     * Exposes an HTTP end point which lets a user retrieve a
+     * {@link VersionList} of an {@link IntellectualEntity}
+     * 
+     * @param entityId
+     *            the {@link IntellectualEntity}'s id
+     * @return a {@link Response} which maps to a corresponding HTTP response
+     *         containing a XML representation of the {@link VersionList}
+     * @throws RepositoryException
+     */
     @GET
     @Produces(MediaType.TEXT_XML)
     @Path("{id}")
@@ -70,8 +81,7 @@ public class IntellectualEntityVersions {
         return Response.ok(new StreamingOutput() {
 
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
+            public void write(OutputStream output) throws IOException, WebApplicationException {
                 try {
                     IntellectualEntityVersions.this.marshaller.serialize(list, output);
                 } catch (JAXBException e) {
