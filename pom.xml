@@ -12,7 +12,7 @@
 	<description>Connector API implementation on top of Fedora 4</description>
 
 	<properties>
-		<fcrepo.version>4.0.0-beta-01</fcrepo.version>
+		<fcrepo.version>4.0.0-beta-02-SNAPSHOT</fcrepo.version>
 		<spring.version>4.0.3.RELEASE</spring.version>
 		<scape-platform-datamodel.version>0.1.8-SNAPSHOT</scape-platform-datamodel.version>
 	</properties>
