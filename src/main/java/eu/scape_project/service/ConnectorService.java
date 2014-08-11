@@ -64,8 +64,9 @@ import org.fcrepo.http.commons.session.SessionFactory;
 import org.fcrepo.kernel.Datastream;
 import org.fcrepo.kernel.FedoraObject;
 import org.fcrepo.kernel.exception.InvalidChecksumException;
-import org.fcrepo.kernel.rdf.SerializationUtils;
-import org.fcrepo.kernel.rdf.impl.DefaultGraphSubjects;
+import org.fcrepo.kernel.impl.rdf.SerializationUtils;
+import org.fcrepo.kernel.impl.rdf.impl.DefaultIdentifierTranslator;
+import org.fcrepo.kernel.rdf.IdentifierTranslator;
 import org.fcrepo.kernel.services.DatastreamService;
 import org.fcrepo.kernel.services.NodeService;
 import org.fcrepo.kernel.services.ObjectService;
@@ -234,9 +235,8 @@ public class ConnectorService {
 
         final String entityPath = "/" + ENTITY_FOLDER + "/" + id;
         final FedoraObject ieObject = this.objectService.getObject(session, entityPath);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String entityUri = subjects.getGraphSubject(ieObject.getNode()).getURI();
-
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final String entityUri = subjects.getSubject(entityPath).getURI();
         final Dataset ds = ieObject.getPropertiesDataset(subjects);
         final Model entityModel = SerializationUtils.unifyDatasetModel(ds);
         String versionPath;
@@ -253,7 +253,7 @@ public class ConnectorService {
         ie.descriptive(fetchMetadata(session, versionPath + "/DESCRIPTIVE"));
 
         /* find all the representations of this entity */
-        final Resource versionResource = versionModel.createResource(subjects.getGraphSubject(versionPath).getURI());
+        final Resource versionResource = versionModel.createResource(subjects.getSubject(versionPath).getURI());
         final List<Representation> reps = new ArrayList<>();
         for (String repUri : getLiteralStrings(versionModel, versionResource, HAS_REPRESENTATION)) {
             reps.add(fetchRepresentation(session, repUri.substring(repUri.indexOf('/'))));
@@ -311,9 +311,9 @@ public class ConnectorService {
         if (versionId == null) {
             entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
             final FedoraObject fo = this.objectService.getObject(session, entityPath);
-            final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-            final String uri = subjects.getGraphSubject(entityPath).getURI();
-            final Model entityModel = SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset(new DefaultGraphSubjects(session)));
+            final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+            final String uri = subjects.getSubject(entityPath).getURI();
+            final Model entityModel = SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset(subjects));
             dsPath = this.getCurrentVersionPath(entityModel, uri) + "/" + repId + "/" + fileId + "/DATA";
         } else {
             entityPath = "/" + ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
@@ -340,8 +340,9 @@ public class ConnectorService {
     public File fetchFile(final Session session, final String fileUri) throws RepositoryException {
         final File.Builder f = new File.Builder();
         final FedoraObject fileObject = this.objectService.getObject(session, fileUri);
-        final Model fileModel = SerializationUtils.unifyDatasetModel(fileObject.getPropertiesDataset(new DefaultGraphSubjects(session)));
-        final Resource parent = fileModel.createResource(new DefaultGraphSubjects(session).getGraphSubject(fileObject.getNode()).getURI());
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final Model fileModel = SerializationUtils.unifyDatasetModel(fileObject.getPropertiesDataset(subjects));
+        final Resource parent = fileModel.createResource(subjects.getSubject(fileObject.getPath()).getURI());
 
         /* fetch and add the properties and metadata from the repo */
         f.technical(fetchMetadata(session, fileUri + "/TECHNICAL"));
@@ -381,8 +382,8 @@ public class ConnectorService {
         String[] ids = path.substring(ENTITY_FOLDER.length() + 2).split("/");
         String entityPath = "/" + ENTITY_FOLDER + "/" + ids[0];
         final FedoraObject entityObject = objectService.getObject(session, entityPath);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri = subjects.getGraphSubject(entityObject.getNode()).getURI();
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final String uri = subjects.getSubject(entityPath).getURI();
 
         StringBuilder versionPath = new StringBuilder();
         versionPath.append(this.getCurrentVersionPath(SerializationUtils.unifyDatasetModel(entityObject.getPropertiesDataset(subjects)), uri));
@@ -441,8 +442,8 @@ public class ConnectorService {
     public Representation fetchRepresentation(final Session session, final String repPath) throws RepositoryException {
         final Representation.Builder rep = new Representation.Builder();
         final FedoraObject repObject = this.objectService.getObject(session, repPath);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri = subjects.getGraphSubject(repObject.getNode()).getURI();
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final String uri = subjects.getSubject(repPath).getURI();
         final Model repModel = SerializationUtils.unifyDatasetModel(repObject.getPropertiesDataset(subjects));
         final Resource parent = repModel.createResource(uri);
 
@@ -471,7 +472,7 @@ public class ConnectorService {
      * 
      * @param session
      *            the {@link Session} to use for this operation
-     * @param repPath
+     * @param repId
      *            the path of the {@link Representation} in Fedora
      * @param versionId
      *            the id of the version to fetch
@@ -485,11 +486,11 @@ public class ConnectorService {
     public Representation fetchRepresentation(final Session session, final String entityId, String repId, Integer versionId) throws RepositoryException {
 
         String entityPath, repPath;
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         if (versionId == null) {
             entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
             final FedoraObject fo = this.objectService.getObject(session, entityPath);
-            final String uri = subjects.getGraphSubject(fo.getNode()).getURI();
+            final String uri = subjects.getSubject(fo.getPath()).getURI();
             final Model entityModel = SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset(subjects));
             repPath = this.getCurrentVersionPath(entityModel, uri) + "/" + repId;
         } else {
@@ -514,8 +515,8 @@ public class ConnectorService {
     public VersionList fetchVersionList(final Session session, final String entityId) throws RepositoryException {
         final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
         final FedoraObject entityObject = this.objectService.getObject(session, entityPath);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri = subjects.getGraphSubject(entityObject.getNode()).getURI();
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final String uri = subjects.getSubject(entityObject.getPath()).getURI();
         final Model model = SerializationUtils.unifyDatasetModel(entityObject.getPropertiesDataset(subjects));
         final Resource subject = model.createResource(uri);
         return new VersionList(entityId, getLiteralStrings(model, subject, HAS_VERSION));
@@ -592,9 +593,9 @@ public class ConnectorService {
             sparql.append(addRepresentations(session, ie.getRepresentations(), versionPath));
 
             /* update the intellectual entity's properties */
-            final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-            final String entityUri = subjects.getGraphSubject(entityObject.getNode()).getURI();
-            final String versionUri = subjects.getGraphSubject(versionObject.getNode()).getURI();
+            final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+            final String entityUri = subjects.getSubject(entityObject.getPath()).getURI();
+            final String versionUri = subjects.getSubject(versionObject.getPath()).getURI();
 
             sparql.append("INSERT {<" + entityUri + "> <" + HAS_LIFECYCLESTATE + "> \"" + LifecycleState.State.INGESTED + "\"} WHERE {};");
             sparql.append("INSERT {<" + entityUri + "> <" + HAS_LIFECYCLESTATE_DETAILS + "> \"successfully ingested at " + new Date().getTime()
@@ -631,14 +632,14 @@ public class ConnectorService {
     public void updateEntity(final Session session, final InputStream src, final String entityId) throws RepositoryException {
         final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
         final FedoraObject entityObject = this.objectService.getObject(session, entityPath);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri = subjects.getGraphSubject(entityObject.getNode()).getURI();
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final String uri = subjects.getSubject(entityObject.getPath()).getURI();
         /* fetch the current version number from the repo */
         final String oldVersionPath = getCurrentVersionPath(SerializationUtils.unifyDatasetModel(entityObject.getPropertiesDataset(subjects)), uri);
-        final String oldVersionUri = subjects.getGraphSubject(oldVersionPath).getURI();
+        final String oldVersionUri = subjects.getSubject(oldVersionPath).getURI();
         int versionNumber = Integer.parseInt(oldVersionPath.substring(oldVersionPath.lastIndexOf('-') + 1)) + 1;
         final String newVersionPath = entityPath + "/version-" + versionNumber;
-        final String newVersionUri = subjects.getGraphSubject(newVersionPath).getURI();
+        final String newVersionUri = subjects.getSubject(newVersionPath).getURI();
 
         try {
             /* read the post body into an IntellectualEntity object */
@@ -782,12 +783,11 @@ public class ConnectorService {
             if (this.datastreamService.exists(session, QUEUE_NODE + "/" + id)) {
                 throw new RepositoryException("Unable to queue item with id " + id + " for ingest since an item with that id is alread in the queue");
             }
-            final Node item = this.datastreamService.createDatastreamNode(session, QUEUE_NODE + "/" + id, "text/xml", null,
-                    new ByteArrayInputStream(sink.toByteArray()));
+            final Node item = this.datastreamService.createDatastream(session, QUEUE_NODE + "/" + id, "text/xml", null, new ByteArrayInputStream(sink.toByteArray())).getContentNode();
             item.setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE, "QUEUED");
             /* update the ingest queue */
-            final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-            final String uri = subjects.getGraphSubject(QUEUE_NODE).getURI();
+            final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+            final String uri = subjects.getSubject(QUEUE_NODE).getURI();
             final String sparql = "INSERT {<" + uri + "> <" + HAS_ITEM + "> \"" + item.getPath() + "\"} WHERE {}";
             queue.updatePropertiesDataset(subjects, sparql);
             session.save();
@@ -813,8 +813,8 @@ public class ConnectorService {
     public LifecycleState fetchLifeCycleState(Session session, String entityId) throws RepositoryException {
         /* check the async queue for the entity */
         final FedoraObject queueObject = this.objectService.getObject(session, QUEUE_NODE);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri = subjects.getGraphSubject(queueObject.getNode()).getURI();
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final String uri = subjects.getSubject(queueObject.getPath()).getURI();
         final Model queueModel = SerializationUtils.unifyDatasetModel(queueObject.getPropertiesDataset(subjects));
         final Resource parent = queueModel.createResource(uri);
         final List<String> asyncIds = this.getLiteralStrings(queueModel, parent, HAS_ITEM);
@@ -838,7 +838,7 @@ public class ConnectorService {
         if (this.objectService.exists(session, "/" + ENTITY_FOLDER + "/" + entityId)) {
             /* fetch the state form the entity itself */
             final FedoraObject entityObject = this.objectService.getObject(session, "/" + ENTITY_FOLDER + "/" + entityId);
-            final String entityUri = subjects.getGraphSubject(entityObject.getNode()).getURI();
+            final String entityUri = subjects.getSubject(entityObject.getPath()).getURI();
             final Model entityModel = SerializationUtils.unifyDatasetModel(entityObject.getPropertiesDataset(subjects));
             final Resource subject = entityModel.createResource(entityUri);
             final String state = this.getFirstLiteralString(entityModel, subject, HAS_LIFECYCLESTATE);
@@ -1013,8 +1013,8 @@ public class ConnectorService {
 
     private void deleteFromQueue(final Session session, final String item) throws RepositoryException {
         final FedoraObject queueObject = this.objectService.getObject(session, QUEUE_NODE);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri = subjects.getGraphSubject(queueObject.getNode()).getURI();
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final String uri = subjects.getSubject(queueObject.getPath()).getURI();
 
         final String sparql = "DELETE {<" + uri + "> <" + HAS_ITEM + "> \"" + item + "\"} WHERE {}";
         queueObject.updatePropertiesDataset(subjects, sparql);
@@ -1024,8 +1024,8 @@ public class ConnectorService {
 
     private List<String> getItemsFromQueue(final Session session) throws RepositoryException {
         final FedoraObject queueObject = this.objectService.getObject(session, QUEUE_NODE);
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String uri = subjects.getGraphSubject(queueObject.getNode()).getURI();
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final String uri = subjects.getSubject(queueObject.getPath()).getURI();
         final Model queueModel = SerializationUtils.unifyDatasetModel(queueObject.getPropertiesDataset(subjects));
         final Resource parent = queueModel.createResource(uri);
         StmtIterator it = queueModel.listStatements(parent, queueModel.createProperty(HAS_ITEM), (RDFNode) null);
@@ -1210,13 +1210,14 @@ public class ConnectorService {
 
     private String addRepresentations(final Session session, final List<Representation> representations, final String versionPath) throws RepositoryException {
         final StringBuilder sparql = new StringBuilder();
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-        final String versionUri = subjects.getGraphSubject("/" + versionPath).getURI();
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final String versionUri = subjects.getSubject("/" + versionPath).getURI();
+
         for (Representation rep : representations) {
             final String repId = (rep.getIdentifier() != null) ? rep.getIdentifier().getValue() : UUID.randomUUID().toString();
             final String repPath = versionPath + "/" + repId;
             final FedoraObject repObject = objectService.createObject(session, repPath);
-            final String repUri = subjects.getGraphSubject(repObject.getNode()).getURI();
+            final String repUri = subjects.getSubject(repObject.getPath()).getURI();
             repObject.getNode().addMixin("scape:representation");
 
             /* add the metadatasets of the rep as datastreams */
@@ -1248,14 +1249,14 @@ public class ConnectorService {
     private String addBitStreams(final Session session, final List<BitStream> bitStreams, final String filePath) throws RepositoryException {
 
         final StringBuilder sparql = new StringBuilder();
-        final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
 
         for (BitStream bs : bitStreams) {
             final String bsId = (bs.getIdentifier() != null) ? bs.getIdentifier().getValue() : UUID.randomUUID().toString();
             final String bsPath = filePath + "/" + bsId;
             final FedoraObject bsObject = this.objectService.createObject(session, bsPath);
-            final String uri = subjects.getGraphSubject(bsObject.getNode()).getURI();
-            final String fileUri = subjects.getGraphSubject(filePath).getURI();
+            final String uri = subjects.getSubject(bsObject.getPath()).getURI();
+            final String fileUri = subjects.getSubject(filePath).getURI();
             if (bs.getTechnical() != null) {
                 sparql.append(addMetadata(session, bs.getTechnical(), bsPath + "/TECHNICAL"));
             }
@@ -1285,9 +1286,9 @@ public class ConnectorService {
             /* create a datastream in fedora for this file */
             final FedoraObject fileObject = this.objectService.createObject(session, filePath);
             fileObject.getNode().addMixin("scape:file");
-            final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-            final String uri = subjects.getGraphSubject(fileObject.getNode()).getURI();
-            final String repUri = subjects.getGraphSubject("/" + repPath).getURI();
+            final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+            final String uri = subjects.getSubject(fileObject.getPath()).getURI();
+            final String repUri = subjects.getSubject("/" + repPath).getURI();
 
             /* add the metadata */
             if (f.getTechnical() != null) {
@@ -1317,7 +1318,7 @@ public class ConnectorService {
                 /* load the actual binary data into the repo */
                 LOG.info("reding binary from {}", fileUri.toASCIIString());
                 try (final InputStream src = fileUri.toURL().openStream()) {
-                    final Node fileDs = this.datastreamService.createDatastreamNode(session, filePath + "/DATA", f.getMimetype(), null, src);
+                    final Node fileDs = this.datastreamService.createDatastream(session, filePath + "/DATA", f.getMimetype(), null, src).getContentNode();
                 } catch (IOException | InvalidChecksumException e) {
                     throw new RepositoryException(e);
                 }
@@ -1351,10 +1352,10 @@ public class ConnectorService {
                 }
             }).start();
 
-            final Node desc = datastreamService.createDatastreamNode(session, path, "text/xml", null, dcSrc);
+            final Node desc = datastreamService.createDatastream(session, path, "text/xml", null, dcSrc).getContentNode();
 
-            final DefaultGraphSubjects subjects = new DefaultGraphSubjects(session);
-            final String dsUri = subjects.getGraphSubject(desc).getURI();
+            final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+            final String dsUri = subjects.getSubject(desc.getPath()).getURI();
             /* get the type of the metadata */
             String type = "unknown";
             String schema = "";

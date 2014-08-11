@@ -12,7 +12,7 @@
 	<description>Connector API implementation on top of Fedora 4</description>
 
 	<properties>
-		<fcrepo.version>4.0.0-alpha-4-SNAPSHOT</fcrepo.version>
+		<fcrepo.version>4.0.0-beta-02-SNAPSHOT</fcrepo.version>
 		<spring.version>3.2.2.RELEASE</spring.version>
 		<scape-platform-datamodel.version>0.1.8-SNAPSHOT</scape-platform-datamodel.version>
 	</properties>
@@ -57,7 +57,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.fcrepo</groupId>
-			<artifactId>fcrepo-kernel</artifactId>
+			<artifactId>fcrepo-kernel-impl</artifactId>
 			<version>${fcrepo.version}</version>
 		</dependency>
 		<dependency>
@@ -148,6 +148,11 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+        <dependency>
+            <groupId>org.mortbay.jetty</groupId>
+            <artifactId>jsp-2.1</artifactId>
+            <version>6.0.0</version>
+        </dependency>
 
 		<!-- Test Gear -->
 		<dependency>
@@ -218,6 +223,12 @@
 			<version>3.2.3.RELEASE</version>
 			<scope>test</scope>
 		</dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.3.2</version>
+            <scope>test</scope>
+        </dependency>
 	</dependencies>
 	<build>
 		<plugins>

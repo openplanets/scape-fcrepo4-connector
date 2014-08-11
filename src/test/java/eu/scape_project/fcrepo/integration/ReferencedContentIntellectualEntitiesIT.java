@@ -97,7 +97,7 @@ public class ReferencedContentIntellectualEntitiesIT extends AbstractIT {
             HttpPost post = new HttpPost(SCAPE_URL + "/entity-async");
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ie, sink);
-            post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray())));
+            post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size()));
             HttpResponse resp = this.client.execute(post);
             assertEquals(200, resp.getStatusLine().getStatusCode());
             post.releaseConnection();
@@ -137,7 +137,7 @@ public class ReferencedContentIntellectualEntitiesIT extends AbstractIT {
             HttpPost post = new HttpPost(SCAPE_URL + "/entity-async");
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ie, sink);
-            post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray())));
+            post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink.toByteArray()), sink.size()));
             HttpResponse resp = this.client.execute(post);
             if (count++ == 0) {
                 assertEquals(200, resp.getStatusLine().getStatusCode());
