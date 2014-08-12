@@ -26,6 +26,7 @@ import javax.xml.bind.JAXBException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
@@ -38,9 +39,9 @@ import eu.scape_project.util.ScapeMarshaller;
 public class AbstractIT {
 
     protected static final String SCAPE_URL =
-            "http://localhost:8080/rest/scape";
+            "http://localhost:8080/scape";
 
-    protected static final String FEDORA_URL = "http://localhost:8080/rest/";
+    protected static final String FEDORA_URL = "http://localhost:8080/";
 
     protected final DefaultHttpClient client = new DefaultHttpClient();
 
@@ -76,7 +77,7 @@ public class AbstractIT {
             throw new IOException(e);
         }
         post.setEntity(new InputStreamEntity(new ByteArrayInputStream(sink
-                .toByteArray()), sink.size()));
+                .toByteArray()), sink.size(), ContentType.TEXT_XML));
         HttpResponse resp = this.client.execute(post);
         assertEquals(201, resp.getStatusLine().getStatusCode());
         String id = EntityUtils.toString(resp.getEntity());

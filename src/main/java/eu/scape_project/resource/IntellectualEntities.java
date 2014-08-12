@@ -79,6 +79,7 @@ public class IntellectualEntities {
      * @throws RepositoryException
      */
     @POST
+    @Consumes(MediaType.TEXT_XML)
     @Produces(MediaType.TEXT_PLAIN)
     public Response ingestEntity(final InputStream src) throws RepositoryException {
         String id = connectorService.addEntity(this.session, src);
