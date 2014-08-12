@@ -12,10 +12,10 @@
 
   <context:component-scan
     base-package="eu.scape_project.web.listener, eu.scape_project.resource" />
-
+    
   <bean class="eu.scape_project.service.ConnectorService">
     <property name="fedoraUrl" value="${scape.fcrepo.url:http://localhost:8080/rest}" />
-    <property name="referencedContent" value="${scape.fcrepo.content.referenced:false}" />
+    <property name="referencedContent" value="true" />
   </bean>
 
   <task:scheduler id="taskScheduler" />
