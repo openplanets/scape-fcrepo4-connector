@@ -596,12 +596,11 @@ public class ConnectorService {
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
             final String entityUri = subjects.getSubject(entityObject.getPath()).getURI();
             final String versionUri = subjects.getSubject(versionObject.getPath()).getURI();
-            sparql.setLength(0);
-            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_LIFECYCLESTATE + "> \"" + LifecycleState.State.INGESTED + "\"}");
-            //sparql.append("INSERT {<" + entityUri + "> <" + HAS_LIFECYCLESTATE_DETAILS + "> \"successfully ingested at " + new Date().getTime() + "\"} WHERE {};");
-            //sparql.append("INSERT {<" + entityUri + "> <" + HAS_TYPE + "> \"intellectualentity\"} WHERE {};");
-            //sparql.append("INSERT {<" + entityUri + "> <" + HAS_VERSION + "> \"" + versionUri + "\"} WHERE {};");
-            //sparql.append("INSERT {<" + entityUri + "> <" + HAS_CURRENT_VERSION + ">  <" + versionUri + "> } WHERE {};");
+            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_LIFECYCLESTATE + "> \"" + LifecycleState.State.INGESTED + "\"};");
+            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_LIFECYCLESTATE_DETAILS + "> \"successfully ingested at " + new Date().getTime() + "\"};");
+            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_TYPE + "> \"intellectualentity\"};");
+            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_VERSION + "> \"" + versionUri + "\"};");
+            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_CURRENT_VERSION + ">  <" + versionUri + "> };");
             /* update the object and it's child's using sparql */
             System.out.println(sparql.toString());
             entityObject.updatePropertiesDataset(subjects, sparql.toString());
@@ -657,8 +656,8 @@ public class ConnectorService {
             sparql.append(addRepresentations(session, ie.getRepresentations(), newVersionPath));
 
             sparql.append("DELETE {<" + uri + "> <" + HAS_CURRENT_VERSION + "> <" + oldVersionUri + ">} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_VERSION + "> \"" + newVersionUri + "\"} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_CURRENT_VERSION + ">  <" + newVersionUri + ">} WHERE {};");
+            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_VERSION + "> \"" + newVersionUri + "\"};");
+            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_CURRENT_VERSION + ">  <" + newVersionUri + ">};");
 
             /* update the object and it's child's using sparql */
             entityObject.updatePropertiesDataset(subjects, sparql.toString());
@@ -788,7 +787,7 @@ public class ConnectorService {
             /* update the ingest queue */
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
             final String uri = subjects.getSubject(QUEUE_NODE).getURI();
-            final String sparql = "INSERT {<" + uri + "> <" + HAS_ITEM + "> \"" + item.getPath() + "\"} WHERE {}";
+            final String sparql = "INSERT DATA {<" + uri + "> <" + HAS_ITEM + "> \"" + item.getPath() + "\"};";
             queue.updatePropertiesDataset(subjects, sparql);
             session.save();
             return id;
@@ -1238,9 +1237,9 @@ public class ConnectorService {
             sparql.append(addFiles(session, rep.getFiles(), repPath));
 
             /* add a sparql query to set the type of this object */
-            sparql.append("INSERT {<" + repUri + "> <" + HAS_TYPE + "> \"representation\"} WHERE {};");
-            sparql.append("INSERT {<" + repUri + "> <" + HAS_TITLE + "> \"" + rep.getTitle() + "\"} WHERE {};");
-            sparql.append("INSERT {<" + versionUri + "> <" + HAS_REPRESENTATION + "> \"" + repUri + "\"} WHERE {};");
+            sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_TYPE + "> \"representation\"};");
+            sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_TITLE + "> \"" + rep.getTitle() + "\"};");
+            sparql.append("INSERT DATA {<" + versionUri + "> <" + HAS_REPRESENTATION + "> \"" + repUri + "\"};");
 
         }
         return sparql.toString();
@@ -1262,9 +1261,9 @@ public class ConnectorService {
             }
             final String bsType = (bs.getType() != null) ? bs.getType().name() : BitStream.Type.STREAM.name();
 
-            sparql.append("INSERT {<" + uri + "> <" + HAS_TYPE + "> \"bitstream\"} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_BITSTREAM_TYPE + "> \"" + bsType + "\"} WHERE {};");
-            sparql.append("INSERT {<" + fileUri + "> <" + HAS_BITSTREAM + "> \"" + uri + "\"} WHERE {};");
+            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_TYPE + "> \"bitstream\"};");
+            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_BITSTREAM_TYPE + "> \"" + bsType + "\"};");
+            sparql.append("INSERT DATA {<" + fileUri + "> <" + HAS_BITSTREAM + "> \"" + uri + "\"};");
         }
 
         return sparql.toString();
@@ -1305,15 +1304,15 @@ public class ConnectorService {
             }
             final String mimeType = (f.getMimetype() != null) ? f.getMimetype() : "application/binary";
 
-            sparql.append("INSERT {<" + uri + "> <" + HAS_TYPE + "> \"file\"} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_FILENAME + "> \"" + fileName + "\"} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_MIMETYPE + "> \"" + mimeType + "\"} WHERE {};");
-            sparql.append("INSERT {<" + uri + "> <" + HAS_INGEST_SOURCE + "> \"" + f.getUri() + "\"} WHERE {};");
-            sparql.append("INSERT {<" + repUri + "> <" + HAS_FILE + "> \"" + uri + "\"} WHERE {};");
+            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_TYPE + "> \"file\"};");
+            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_FILENAME + "> \"" + fileName + "\"};");
+            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_MIMETYPE + "> \"" + mimeType + "\"};");
+            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_INGEST_SOURCE + "> \"" + f.getUri() + "\"};");
+            sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_FILE + "> \"" + uri + "\"};");
 
             if (this.referencedContent) {
                 /* only write a reference to the file URI as a node property */
-                sparql.append("INSERT {<" + uri + "> <" + HAS_REFERENCED_CONTENT + "> \"" + fileUri + "\"} WHERE {};");
+                sparql.append("INSERT DATA {<" + uri + "> <" + HAS_REFERENCED_CONTENT + "> \"" + fileUri + "\"};");
             } else {
                 /* load the actual binary data into the repo */
                 LOG.info("reding binary from {}", fileUri.toASCIIString());
@@ -1393,8 +1392,8 @@ public class ConnectorService {
             }
 
             /* add a sparql query to set the type of this object */
-            sparql.append("INSERT {<" + dsUri + "> <" + HAS_TYPE + "> \"" + type + "\"} WHERE {};");
-            sparql.append("INSERT {<" + dsUri + "> <" + HAS_SCHEMA + "> \"" + schema + "\"} WHERE {};");
+            sparql.append("INSERT DATA {<" + dsUri + "> <" + HAS_TYPE + "> \"" + type + "\"};");
+            sparql.append("INSERT DATA {<" + dsUri + "> <" + HAS_SCHEMA + "> \"" + schema + "\"};");
 
             return sparql.toString();
 
