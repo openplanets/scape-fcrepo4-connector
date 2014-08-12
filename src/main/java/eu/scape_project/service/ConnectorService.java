@@ -596,14 +596,14 @@ public class ConnectorService {
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
             final String entityUri = subjects.getSubject(entityObject.getPath()).getURI();
             final String versionUri = subjects.getSubject(versionObject.getPath()).getURI();
-
-            sparql.append("INSERT {<" + entityUri + "> <" + HAS_LIFECYCLESTATE + "> \"" + LifecycleState.State.INGESTED + "\"} WHERE {};");
-            sparql.append("INSERT {<" + entityUri + "> <" + HAS_LIFECYCLESTATE_DETAILS + "> \"successfully ingested at " + new Date().getTime()
-                    + "\"} WHERE {};");
-            sparql.append("INSERT {<" + entityUri + "> <" + HAS_TYPE + "> \"intellectualentity\"} WHERE {};");
-            sparql.append("INSERT {<" + entityUri + "> <" + HAS_VERSION + "> \"" + versionUri + "\"} WHERE {};");
-            sparql.append("INSERT {<" + entityUri + "> <" + HAS_CURRENT_VERSION + ">  <" + versionUri + "> } WHERE {};");
+            sparql.setLength(0);
+            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_LIFECYCLESTATE + "> \"" + LifecycleState.State.INGESTED + "\"}");
+            //sparql.append("INSERT {<" + entityUri + "> <" + HAS_LIFECYCLESTATE_DETAILS + "> \"successfully ingested at " + new Date().getTime() + "\"} WHERE {};");
+            //sparql.append("INSERT {<" + entityUri + "> <" + HAS_TYPE + "> \"intellectualentity\"} WHERE {};");
+            //sparql.append("INSERT {<" + entityUri + "> <" + HAS_VERSION + "> \"" + versionUri + "\"} WHERE {};");
+            //sparql.append("INSERT {<" + entityUri + "> <" + HAS_CURRENT_VERSION + ">  <" + versionUri + "> } WHERE {};");
             /* update the object and it's child's using sparql */
+            System.out.println(sparql.toString());
             entityObject.updatePropertiesDataset(subjects, sparql.toString());
 
             /* save the changes made to the objects */
