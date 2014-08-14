@@ -606,7 +606,6 @@ public class ConnectorService {
             sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_CURRENT_VERSION + ">  <" + versionUri + "> };");
 
             /* update the object and it's child's using sparql */
-            System.out.println(sparql.toString());
             entityObject.updatePropertiesDataset(subjects, sparql.toString());
 
             /* save the changes made to the objects */
@@ -1240,13 +1239,14 @@ public class ConnectorService {
             }
 
             /* add all the files */
-            sparql.append(addFiles(session, rep.getFiles(), repPath));
+            for (final String fileUri : addFiles(session, rep.getFiles(), repPath)) {
+                sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_FILE + "> \"" + fileUri + "\"};");
+            }
 
             /* add a sparql query to set the type of this object */
             sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_TYPE + "> \"representation\"};");
             sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_TITLE + "> \"" + rep.getTitle() + "\"};");
-            sparql.append("INSERT DATA {<" + versionUri + "> <" + HAS_REPRESENTATION + "> \"" + repUri + "\"};");
-
+            repObject.updatePropertiesDataset(subjects, repUri);
         }
         return repUris;
 
@@ -1276,8 +1276,9 @@ public class ConnectorService {
         return sparql.toString();
     }
 
-    private String addFiles(final Session session, final List<File> files, final String repPath) throws RepositoryException {
+    private List<String> addFiles(final Session session, final List<File> files, final String repPath) throws RepositoryException {
 
+        final List<String> fileUris = new ArrayList<>(files.size());
         final StringBuilder sparql = new StringBuilder();
         for (File f : files) {
 
@@ -1315,7 +1316,7 @@ public class ConnectorService {
             sparql.append("INSERT DATA {<" + uri + "> <" + HAS_FILENAME + "> \"" + fileName + "\"};");
             sparql.append("INSERT DATA {<" + uri + "> <" + HAS_MIMETYPE + "> \"" + mimeType + "\"};");
             sparql.append("INSERT DATA {<" + uri + "> <" + HAS_INGEST_SOURCE + "> \"" + f.getUri() + "\"};");
-            sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_FILE + "> \"" + uri + "\"};");
+
 
             if (this.referencedContent) {
                 /* only write a reference to the file URI as a node property */
@@ -1329,9 +1330,9 @@ public class ConnectorService {
                     throw new RepositoryException(e);
                 }
             }
+            fileObject.updatePropertiesDataset(subjects, sparql.toString());
         }
-
-        return sparql.toString();
+        return fileUris;
     }
 
     private void addMetadata(final Session session, final Object metadata, final String path) throws RepositoryException {
