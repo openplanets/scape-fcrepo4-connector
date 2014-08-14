@@ -589,18 +589,22 @@ public class ConnectorService {
                 addMetadata(session, ie.getDescriptive(), versionPath + "/DESCRIPTIVE");
             }
 
-            /* add all the representations */
-            sparql.append(addRepresentations(session, ie.getRepresentations(), versionPath));
-
-            /* update the intellectual entity's properties */
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
             final String entityUri = subjects.getSubject(entityObject.getPath()).getURI();
             final String versionUri = subjects.getSubject(versionObject.getPath()).getURI();
+
+            /* add all the representations */
+            for (String repUri : addRepresentations(session, ie.getRepresentations(), versionPath)) {
+                sparql.append("INSERT DATA {<" + versionUri + "> <" + HAS_REPRESENTATION + "> \"" + repUri + "\"};");
+            }
+
+            /* update the intellectual entity's properties */
             sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_LIFECYCLESTATE + "> \"" + LifecycleState.State.INGESTED + "\"};");
             sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_LIFECYCLESTATE_DETAILS + "> \"successfully ingested at " + new Date().getTime() + "\"};");
             sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_TYPE + "> \"intellectualentity\"};");
             sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_VERSION + "> \"" + versionUri + "\"};");
             sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_CURRENT_VERSION + ">  <" + versionUri + "> };");
+
             /* update the object and it's child's using sparql */
             System.out.println(sparql.toString());
             entityObject.updatePropertiesDataset(subjects, sparql.toString());
@@ -1207,16 +1211,18 @@ public class ConnectorService {
         return result;
     }
 
-    private String addRepresentations(final Session session, final List<Representation> representations, final String versionPath) throws RepositoryException {
+    private List<String> addRepresentations(final Session session, final List<Representation> representations, final String versionPath) throws RepositoryException {
         final StringBuilder sparql = new StringBuilder();
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         final String versionUri = subjects.getSubject("/" + versionPath).getURI();
+        final List<String> repUris = new ArrayList<>(representations.size());
 
         for (Representation rep : representations) {
             final String repId = (rep.getIdentifier() != null) ? rep.getIdentifier().getValue() : UUID.randomUUID().toString();
             final String repPath = versionPath + "/" + repId;
             final FedoraObject repObject = objectService.createObject(session, repPath);
             final String repUri = subjects.getSubject(repObject.getPath()).getURI();
+            repUris.add(repUri);
             repObject.getNode().addMixin("scape:representation");
 
             /* add the metadatasets of the rep as datastreams */
@@ -1242,7 +1248,8 @@ public class ConnectorService {
             sparql.append("INSERT DATA {<" + versionUri + "> <" + HAS_REPRESENTATION + "> \"" + repUri + "\"};");
 
         }
-        return sparql.toString();
+        return repUris;
+
     }
 
     private String addBitStreams(final Session session, final List<BitStream> bitStreams, final String filePath) throws RepositoryException {
