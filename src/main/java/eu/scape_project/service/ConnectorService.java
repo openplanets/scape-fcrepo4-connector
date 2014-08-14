@@ -13,22 +13,6 @@
  */
 package eu.scape_project.service;
 
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_BITSTREAM;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_BITSTREAM_TYPE;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_CURRENT_VERSION;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_FILE;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_FILENAME;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_INGEST_SOURCE;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_ITEM;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_LIFECYCLESTATE;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_LIFECYCLESTATE_DETAILS;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_MIMETYPE;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_REFERENCED_CONTENT;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_REPRESENTATION;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_SCHEMA;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_TITLE;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_TYPE;
-import static eu.scape_project.rdf.ScapeRDFVocabulary.HAS_VERSION;
 import info.lc.xmlns.premis_v2.PremisComplexType;
 import info.lc.xmlns.premis_v2.RightsComplexType;
 import info.lc.xmlns.textmd_v3.TextMD;
@@ -103,6 +87,8 @@ import gov.loc.audiomd.AudioType;
 import gov.loc.marc21.slim.RecordType;
 import gov.loc.mix.v20.Mix;
 import gov.loc.videomd.VideoType;
+
+import static eu.scape_project.rdf.ScapeRDFVocabulary.*;
 
 /**
  * Component which does all the interaction with fcrepo4
@@ -1262,6 +1248,7 @@ public class ConnectorService {
             final String bsId = (bs.getIdentifier() != null) ? bs.getIdentifier().getValue() : UUID.randomUUID().toString();
             final String bsPath = filePath + "/" + bsId;
             final FedoraObject bsObject = this.objectService.createObject(session, bsPath);
+            bsObject.getNode().addMixin("scape:bitstream");
             final String uri = subjects.getSubject(bsObject.getPath()).getURI();
             final String fileUri = subjects.getSubject(filePath).getURI();
             if (bs.getTechnical() != null) {
@@ -1365,6 +1352,7 @@ public class ConnectorService {
 
             final Datastream ds = datastreamService.createDatastream(session, path, "text/xml", null, dcSrc);
             final Node desc = ds.getContentNode();
+            desc.addMixin("scape:metadata");
 
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
             final String dsUri = subjects.getSubject(desc.getPath()).getURI();
@@ -1405,8 +1393,9 @@ public class ConnectorService {
             }
 
             /* add a sparql query to set the type of this object */
-            sparql.append("INSERT DATA {<" + dsUri + "> <" + HAS_TYPE + "> \"" + type + "\"};");
-            sparql.append("INSERT DATA {<" + dsUri + "> <" + HAS_SCHEMA + "> \"" + schema + "\"};");
+            sparql.append("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
+            sparql.append("INSERT DATA {<" + dsUri + "> " + HAS_TYPE + " '" + type + "'};");
+            sparql.append("INSERT DATA {<" + dsUri + "> " + HAS_SCHEMA + " '" + schema + "'};");
 
             ds.updatePropertiesDataset(subjects, sparql.toString());
 

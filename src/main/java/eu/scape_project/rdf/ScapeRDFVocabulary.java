@@ -25,9 +25,9 @@ public interface ScapeRDFVocabulary {
 
     public static final String HAS_REPRESENTATION = SCAPE_NAMESPACE + "hasRepresentation";
 
-    public static final String HAS_TYPE = SCAPE_NAMESPACE + "hasType";
+    public static final String HAS_TYPE = "scape:hasType";
 
-    public static final String HAS_SCHEMA = SCAPE_NAMESPACE + "hasSchema";
+    public static final String HAS_SCHEMA = "scape:hasSchema";
 
     public static final String HAS_BITSTREAM_TYPE = SCAPE_NAMESPACE + "hasBitstreamType";
 
