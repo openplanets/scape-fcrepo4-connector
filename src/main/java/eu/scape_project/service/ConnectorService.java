@@ -1246,16 +1246,17 @@ public class ConnectorService {
             /* add a sparql query to set the type of this object */
             sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_TYPE + "> \"representation\"};");
             sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_TITLE + "> \"" + rep.getTitle() + "\"};");
-            repObject.updatePropertiesDataset(subjects, repUri);
+            repObject.updatePropertiesDataset(subjects, sparql.toString());
         }
         return repUris;
 
     }
 
-    private String addBitStreams(final Session session, final List<BitStream> bitStreams, final String filePath) throws RepositoryException {
+    private List<String> addBitStreams(final Session session, final List<BitStream> bitStreams, final String filePath) throws RepositoryException {
 
         final StringBuilder sparql = new StringBuilder();
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+        final List<String> bsUris = new ArrayList<>(bitStreams.size());
 
         for (BitStream bs : bitStreams) {
             final String bsId = (bs.getIdentifier() != null) ? bs.getIdentifier().getValue() : UUID.randomUUID().toString();
@@ -1270,10 +1271,11 @@ public class ConnectorService {
 
             sparql.append("INSERT DATA {<" + uri + "> <" + HAS_TYPE + "> \"bitstream\"};");
             sparql.append("INSERT DATA {<" + uri + "> <" + HAS_BITSTREAM_TYPE + "> \"" + bsType + "\"};");
-            sparql.append("INSERT DATA {<" + fileUri + "> <" + HAS_BITSTREAM + "> \"" + uri + "\"};");
+            bsObject.updatePropertiesDataset(subjects, sparql.toString());
+            bsUris.add(uri);
         }
 
-        return sparql.toString();
+        return bsUris;
     }
 
     private List<String> addFiles(final Session session, final List<File> files, final String repPath) throws RepositoryException {
@@ -1304,7 +1306,9 @@ public class ConnectorService {
 
             /* add all bitstreams as child objects */
             if (f.getBitStreams() != null) {
-                sparql.append(addBitStreams(session, f.getBitStreams(), "/" + filePath));
+                for (final String bsUri : addBitStreams(session, f.getBitStreams(), "/" + filePath)) {
+                    sparql.append("INSERT DATA {<" + fileUri + "> <" + HAS_BITSTREAM + "> \"" + bsUri + "\"};");
+                }
             }
             String fileName = f.getFilename();
             if (fileName == null) {
