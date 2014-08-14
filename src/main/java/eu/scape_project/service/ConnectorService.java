@@ -586,7 +586,7 @@ public class ConnectorService {
 
             /* add the metadata datastream for descriptive metadata */
             if (ie.getDescriptive() != null) {
-                sparql.append(addMetadata(session, ie.getDescriptive(), versionPath + "/DESCRIPTIVE"));
+                addMetadata(session, ie.getDescriptive(), versionPath + "/DESCRIPTIVE");
             }
 
             /* add all the representations */
@@ -649,7 +649,7 @@ public class ConnectorService {
 
             /* add the metadata datastream for descriptive metadata */
             if (ie.getDescriptive() != null) {
-                sparql.append(addMetadata(session, ie.getDescriptive(), newVersionPath + "/DESCRIPTIVE"));
+                addMetadata(session, ie.getDescriptive(), newVersionPath + "/DESCRIPTIVE");
             }
 
             /* add all the representations */
@@ -1221,16 +1221,16 @@ public class ConnectorService {
 
             /* add the metadatasets of the rep as datastreams */
             if (rep.getTechnical() != null) {
-                sparql.append(addMetadata(session, rep.getTechnical(), repPath + "/TECHNICAL"));
+                addMetadata(session, rep.getTechnical(), repPath + "/TECHNICAL");
             }
             if (rep.getSource() != null) {
-                sparql.append(addMetadata(session, rep.getSource(), repPath + "/SOURCE"));
+                addMetadata(session, rep.getSource(), repPath + "/SOURCE");
             }
             if (rep.getRights() != null) {
-                sparql.append(addMetadata(session, rep.getRights(), repPath + "/RIGHTS"));
+                addMetadata(session, rep.getRights(), repPath + "/RIGHTS");
             }
             if (rep.getProvenance() != null) {
-                sparql.append(addMetadata(session, rep.getProvenance(), repPath + "/PROVENANCE"));
+                addMetadata(session, rep.getProvenance(), repPath + "/PROVENANCE");
             }
 
             /* add all the files */
@@ -1257,7 +1257,7 @@ public class ConnectorService {
             final String uri = subjects.getSubject(bsObject.getPath()).getURI();
             final String fileUri = subjects.getSubject(filePath).getURI();
             if (bs.getTechnical() != null) {
-                sparql.append(addMetadata(session, bs.getTechnical(), bsPath + "/TECHNICAL"));
+                addMetadata(session, bs.getTechnical(), bsPath + "/TECHNICAL");
             }
             final String bsType = (bs.getType() != null) ? bs.getType().name() : BitStream.Type.STREAM.name();
 
@@ -1291,7 +1291,7 @@ public class ConnectorService {
 
             /* add the metadata */
             if (f.getTechnical() != null) {
-                sparql.append(addMetadata(session, f.getTechnical(), filePath + "/TECHNICAL"));
+                addMetadata(session, f.getTechnical(), filePath + "/TECHNICAL");
             }
 
             /* add all bitstreams as child objects */
@@ -1327,7 +1327,7 @@ public class ConnectorService {
         return sparql.toString();
     }
 
-    private String addMetadata(final Session session, final Object metadata, final String path) throws RepositoryException {
+    private void addMetadata(final Session session, final Object metadata, final String path) throws RepositoryException {
         final StringBuilder sparql = new StringBuilder();
         try {
 
@@ -1351,7 +1351,8 @@ public class ConnectorService {
                 }
             }).start();
 
-            final Node desc = datastreamService.createDatastream(session, path, "text/xml", null, dcSrc).getContentNode();
+            final Datastream ds = datastreamService.createDatastream(session, path, "text/xml", null, dcSrc);
+            final Node desc = ds.getContentNode();
 
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
             final String dsUri = subjects.getSubject(desc.getPath()).getURI();
@@ -1395,7 +1396,7 @@ public class ConnectorService {
             sparql.append("INSERT DATA {<" + dsUri + "> <" + HAS_TYPE + "> \"" + type + "\"};");
             sparql.append("INSERT DATA {<" + dsUri + "> <" + HAS_SCHEMA + "> \"" + schema + "\"};");
 
-            return sparql.toString();
+            ds.updatePropertiesDataset(subjects, sparql.toString());
 
         } catch (IOException e) {
             throw new RepositoryException(e);
