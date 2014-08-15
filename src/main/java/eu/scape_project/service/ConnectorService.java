@@ -1294,7 +1294,7 @@ public class ConnectorService {
             /* add all bitstreams as child objects */
             if (f.getBitStreams() != null) {
                 for (final String bsUri : addBitStreams(session, f.getBitStreams(), "/" + filePath)) {
-                    sparql.append("INSERT DATA {<" + fileUri + "> <" + HAS_BITSTREAM + "> \"" + bsUri + "\"};");
+                    sparql.append("INSERT DATA {<" + uri + "> <" + HAS_BITSTREAM + "> \"" + bsUri + "\"};");
                 }
             }
             String fileName = f.getFilename();
@@ -1321,6 +1321,7 @@ public class ConnectorService {
                     throw new RepositoryException(e);
                 }
             }
+            fileUris.add(uri);
             fileObject.updatePropertiesDataset(subjects, sparql.toString());
         }
         return fileUris;
