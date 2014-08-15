@@ -15,7 +15,7 @@
     
   <bean class="eu.scape_project.service.ConnectorService">
     <property name="fedoraUrl" value="${scape.fcrepo.url:http://localhost:8080/rest}" />
-    <property name="referencedContent" value="true" />
+    <property name="referencedContent" value="false" />
   </bean>
 
   <task:scheduler id="taskScheduler" />

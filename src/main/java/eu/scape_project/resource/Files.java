@@ -128,7 +128,7 @@ public class Files {
             for (Representation r : e.getRepresentations()) {
                 if (r.getIdentifier().getValue().equals(repId)) {
                     for (File f : r.getFiles()) {
-                        if (f.getIdentifier().equals(fileId)) {
+                        if (f.getIdentifier().getValue().equals(fileId)) {
                             return Response.temporaryRedirect(f.getUri()).build();
                         }
                     }

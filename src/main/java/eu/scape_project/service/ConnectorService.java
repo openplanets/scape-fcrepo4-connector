@@ -642,11 +642,12 @@ public class ConnectorService {
             }
 
             /* add all the representations */
-            sparql.append(addRepresentations(session, ie.getRepresentations(), newVersionPath));
+            addRepresentations(session, ie.getRepresentations(), newVersionPath);
 
-            sparql.append("DELETE {<" + uri + "> <" + HAS_CURRENT_VERSION + "> <" + oldVersionUri + ">} WHERE {};");
-            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_VERSION + "> \"" + newVersionUri + "\"};");
-            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_CURRENT_VERSION + ">  <" + newVersionUri + ">};");
+            sparql.append("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
+            sparql.append("DELETE {<" + uri + "> " + HAS_CURRENT_VERSION + " <" + oldVersionUri + ">} WHERE {};");
+            sparql.append("INSERT DATA {<" + uri + "> " + HAS_VERSION + " <" + newVersionUri + ">};");
+            sparql.append("INSERT DATA {<" + uri + "> " + HAS_CURRENT_VERSION + "  <" + newVersionUri + ">};");
 
             /* update the object and it's child's using sparql */
             entityObject.updatePropertiesDataset(subjects, sparql.toString());
