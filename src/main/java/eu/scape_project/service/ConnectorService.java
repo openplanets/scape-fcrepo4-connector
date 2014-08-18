@@ -13,26 +13,14 @@
  */
 package eu.scape_project.service;
 
-import info.lc.xmlns.premis_v2.PremisComplexType;
-import info.lc.xmlns.premis_v2.RightsComplexType;
-import info.lc.xmlns.textmd_v3.TextMD;
+import static eu.scape_project.rdf.ScapeRDFVocabulary.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
+import java.io.*;
 import java.net.URI;
 import java.util.*;
 
-import javax.jcr.ItemExistsException;
-import javax.jcr.ItemNotFoundException;
-import javax.jcr.Node;
+import javax.jcr.*;
 import javax.jcr.NodeIterator;
-import javax.jcr.PathNotFoundException;
-import javax.jcr.RepositoryException;
-import javax.jcr.Session;
 import javax.jcr.query.Query;
 import javax.jcr.query.QueryManager;
 import javax.jcr.query.QueryResult;
@@ -60,32 +48,23 @@ import org.springframework.stereotype.Component;
 
 import com.google.books.gbs.GbsType;
 import com.hp.hpl.jena.query.Dataset;
-import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.*;
 import com.hp.hpl.jena.rdf.model.Property;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.Resource;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 import edu.harvard.hul.ois.xml.ns.fits.fits_output.Fits;
-import eu.scape_project.model.BitStream;
+import eu.scape_project.model.*;
 import eu.scape_project.model.File;
-import eu.scape_project.model.Identifier;
-import eu.scape_project.model.IntellectualEntity;
-import eu.scape_project.model.IntellectualEntityCollection;
-import eu.scape_project.model.LifecycleState;
 import eu.scape_project.model.LifecycleState.State;
-import eu.scape_project.model.Representation;
-import eu.scape_project.model.VersionList;
 import eu.scape_project.rdf.ScapeRDFVocabulary;
-import eu.scape_project.resource.IntellectualEntities;
 import eu.scape_project.util.ContentTypeInputStream;
 import eu.scape_project.util.ScapeMarshaller;
 import gov.loc.audiomd.AudioType;
 import gov.loc.marc21.slim.RecordType;
 import gov.loc.mix.v20.Mix;
 import gov.loc.videomd.VideoType;
-
-import static eu.scape_project.rdf.ScapeRDFVocabulary.*;
+import info.lc.xmlns.premis_v2.PremisComplexType;
+import info.lc.xmlns.premis_v2.RightsComplexType;
+import info.lc.xmlns.textmd_v3.TextMD;
 
 /**
  * Component which does all the interaction with fcrepo4
@@ -770,14 +749,15 @@ public class ConnectorService {
             if (this.datastreamService.exists(session, QUEUE_NODE + "/" + id)) {
                 throw new RepositoryException("Unable to queue item with id " + id + " for ingest since an item with that id is alread in the queue");
             }
-            final Node item = this.datastreamService.createDatastream(session, QUEUE_NODE + "/" + id, "text/xml", null, new ByteArrayInputStream(sink.toByteArray())).getContentNode();
-            item.setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE, "QUEUED");
+            final Node item = this.datastreamService.createDatastream(session, QUEUE_NODE + "/" + id, "text/xml", null, new ByteArrayInputStream(sink.toByteArray())).getNode();
+            item.addMixin("scape:async-queue-item");
             /* update the ingest queue */
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
-            final String uri = subjects.getSubject(QUEUE_NODE).getURI();
+            final String queueUri = subjects.getSubject(QUEUE_NODE).getURI();
+            final String itemUri = subjects.getSubject(item.getPath()).getURI();
             final StringBuilder sparql = new StringBuilder("PREFIX scape: <http://scapeproject.eu/model#> ");
-            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_ITEM) + " \"" + item.getPath() + "\"};");
-            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_INGEST_STATE) + " \"QUEUED\"");
+            sparql.append("INSERT DATA {<" + queueUri + "> " + prefix(HAS_ITEM) + " \"" + itemUri + "\"};");
+            sparql.append("INSERT DATA {<" + itemUri + "> " + prefix(HAS_INGEST_STATE) + " \"QUEUED\"};");
             queue.updatePropertiesDataset(subjects, sparql.toString());
             session.save();
             return id;
@@ -807,10 +787,13 @@ public class ConnectorService {
         final Model queueModel = SerializationUtils.unifyDatasetModel(queueObject.getPropertiesDataset(subjects));
         final Resource parent = queueModel.createResource(uri);
         final List<String> asyncIds = this.getLiteralStrings(queueModel, parent, HAS_ITEM);
-        if (asyncIds.contains(QUEUE_NODE + "/" + entityId)) {
-            String state = this.datastreamService.getDatastreamNode(session, QUEUE_NODE + "/" + entityId).getProperties(ScapeRDFVocabulary.HAS_INGEST_STATE)
-                    .nextProperty().getString();
-            ;
+        final String itemPath = QUEUE_NODE + "/" + entityId;
+        if (asyncIds.contains(subjects.getSubject(itemPath).getURI())) {
+            final Node node = this.datastreamService.getDatastream(session, itemPath).getNode();
+            javax.jcr.Property prop = node
+                    .getProperties(prefix(HAS_INGEST_STATE))
+                    .nextProperty();
+            String state = prop.getString();
             switch (state) {
             case "INGESTING":
                 return new LifecycleState("", State.INGESTING);
@@ -1007,6 +990,13 @@ public class ConnectorService {
         return uri;
     }
 
+    private List<String> getResourcesFromModel(Model model, Resource parent, String propertyName) {
+        StmtIterator it = model.listStatements(parent, model.createProperty(namespace(propertyName)), (RDFNode) null);
+        final List<String> resources = new ArrayList<>(16);
+        resources.add(it.next().getResource().getURI());
+        return resources;
+    }
+
     private void deleteFromQueue(final Session session, final String item) throws RepositoryException {
         final FedoraObject queueObject = this.objectService.getObject(session, QUEUE_NODE);
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
@@ -1024,11 +1014,15 @@ public class ConnectorService {
         final String uri = subjects.getSubject(queueObject.getPath()).getURI();
         final Model queueModel = SerializationUtils.unifyDatasetModel(queueObject.getPropertiesDataset(subjects));
         final Resource parent = queueModel.createResource(uri);
-        StmtIterator it = queueModel.listStatements(parent, queueModel.createProperty(HAS_ITEM), (RDFNode) null);
+        StmtIterator it = queueModel.listStatements(parent, queueModel.createProperty(namespace(HAS_ITEM)), (RDFNode) null);
         List<String> queueItems = new ArrayList<>();
         while (it.hasNext()) {
-            String path = it.next().getObject().asLiteral().getString();
-            if (this.datastreamService.getDatastreamNode(session, path).getProperties(ScapeRDFVocabulary.HAS_INGEST_STATE).nextProperty().getString()
+            final String itemUri = it.nextStatement().getObject().asLiteral().getString();
+            final String path = subjects.getPathFromSubject(queueModel.createResource(itemUri));
+            if (this.datastreamService.getDatastreamNode(session, path)
+                    .getProperties(prefix(HAS_INGEST_STATE))
+                    .nextProperty()
+                    .getString()
                     .equals("QUEUED")) {
                 queueItems.add(path);
             }
@@ -1295,7 +1289,6 @@ public class ConnectorService {
             fileObject.getNode().addMixin("scape:file");
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
             final String uri = subjects.getSubject(fileObject.getPath()).getURI();
-            final String repUri = subjects.getSubject("/" + repPath).getURI();
 
             /* add the metadata */
             if (f.getTechnical() != null) {
