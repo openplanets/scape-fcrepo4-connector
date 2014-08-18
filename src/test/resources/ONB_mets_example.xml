@@ -8,7 +8,7 @@
            xsi:schemaLocation="http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd
                                http://www.loc.gov/MARC21/slim http://www.loc.gov/standards/marcxml/schema/MARC21slim.xsd
                                info:lc/xmlns/premis-v2 http://www.loc.gov/standards/premis/premis.xsd"
-           OBJID="ONB_+Z35072001"
+           OBJID="ONB_Z35072001"
            PROFILE="gbs">
 
 <METS:metsHdr ID="HDR1" CREATEDATE="2011-08-24T07:17:38" RECORDSTATUS="NEW">

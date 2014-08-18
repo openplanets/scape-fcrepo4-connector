@@ -17,6 +17,7 @@ import static eu.scape_project.rdf.ScapeRDFVocabulary.*;
 
 import java.io.*;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.util.*;
 
 import javax.jcr.*;
@@ -526,6 +527,7 @@ public class ConnectorService {
             if (entityId == null) {
                 if (ie.getIdentifier() != null) {
                     entityId = ie.getIdentifier().getValue();
+                    this.validateId(entityId);
                 } else {
                     entityId = UUID.randomUUID().toString();
                 }
@@ -577,6 +579,16 @@ public class ConnectorService {
 
         } catch (JAXBException e) {
             LOG.error(e.getLocalizedMessage(), e);
+            throw new RepositoryException(e);
+        }
+    }
+
+    private void validateId(String entityId) throws RepositoryException{
+        try {
+            if (!URLEncoder.encode(entityId, "UTF-8").equals(entityId)) {
+                 throw new RepositoryException("Entity ID is not valid. No special chars are allowed");
+            }
+        } catch (UnsupportedEncodingException e) {
             throw new RepositoryException(e);
         }
     }
@@ -1360,7 +1372,7 @@ public class ConnectorService {
             }).start();
 
             final Datastream ds = datastreamService.createDatastream(session, path, "text/xml", null, dcSrc);
-            final Node desc = ds.getContentNode();
+            final Node desc = ds.getNode();
             desc.addMixin("scape:metadata");
 
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
