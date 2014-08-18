@@ -341,7 +341,7 @@ public class IntellectualEntitiesIT extends AbstractIT {
                             .getEntity().getContent());
             get.releaseConnection();
         } while (!state.getState().equals(State.INGESTED) &&
-                (System.currentTimeMillis() - start) < 30000);
+                (System.currentTimeMillis() - start) < 60000);
         assertEquals(State.INGESTED, state.getState());
     }
 

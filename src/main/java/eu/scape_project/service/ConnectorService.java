@@ -789,11 +789,11 @@ public class ConnectorService {
         final List<String> asyncIds = this.getLiteralStrings(queueModel, parent, HAS_ITEM);
         final String itemPath = QUEUE_NODE + "/" + entityId;
         if (asyncIds.contains(subjects.getSubject(itemPath).getURI())) {
-            final Node node = this.datastreamService.getDatastream(session, itemPath).getNode();
-            javax.jcr.Property prop = node
+            final String state = this.datastreamService.getDatastream(session, itemPath).getNode()
                     .getProperties(prefix(HAS_INGEST_STATE))
-                    .nextProperty();
-            String state = prop.getString();
+                    .nextProperty()
+                    .getString();
+
             switch (state) {
             case "INGESTING":
                 return new LifecycleState("", State.INGESTING);
@@ -842,15 +842,16 @@ public class ConnectorService {
             try {
                 final StringBuilder sparql = new StringBuilder("PREFIX scape: <http://scapeproject.eu/model#> ");
                 final String uri = subjects.getSubject(ds.getPath()).getURI();
-                sparql.append("INSERT DATA {<" + uri + "> " + HAS_INGEST_STATE + " \"INGESTING\"};");
+                sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_INGEST_STATE) + " \"INGESTING\"};");
                 ds.updatePropertiesDataset(subjects, sparql.toString());
                 addEntity(session, ds.getContent(), item.substring(QUEUE_NODE.length() + 1));
                 deleteFromQueue(session, item);
             } catch (Exception e) {
                 final StringBuilder sparql = new StringBuilder("PREFIX scape: <http://scapeproject.eu/model#> ");
                 final String uri = subjects.getSubject(ds.getPath()).getURI();
-                sparql.append("INSERT DATA {<" + uri + "> " + HAS_INGEST_STATE + " \"INGEST_FAILED\"};");
+                sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_INGEST_STATE) + " \"INGEST_FAILED\"};");
                 ds.updatePropertiesDataset(subjects, sparql.toString());
+                e.printStackTrace();
             }
         }
         session.save();
@@ -1001,8 +1002,9 @@ public class ConnectorService {
         final FedoraObject queueObject = this.objectService.getObject(session, QUEUE_NODE);
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         final String uri = subjects.getSubject(queueObject.getPath()).getURI();
+        final String itemUri = subjects.getSubject(item).getURI();
 
-        final String sparql = "DELETE {<" + uri + "> " + prefix(HAS_ITEM) + " \"" + item + "\"} WHERE {}";
+        final String sparql = "PREFIX scape: <http://scapeproject.eu/model#> DELETE {<" + uri + "> " + prefix(HAS_ITEM) + " \"" + itemUri + "\"} WHERE {}";
         queueObject.updatePropertiesDataset(subjects, sparql);
         this.nodeService.deleteObject(session, item);
         session.save();
