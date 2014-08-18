@@ -362,7 +362,7 @@ public class ConnectorService {
      */
     public Object fetchCurrentMetadata(final Session session, final String path) throws RepositoryException {
 
-        String[] ids = path.substring(ENTITY_FOLDER.length() + 2).split("/");
+        String[] ids = path.substring(ENTITY_FOLDER.length() + 1).split("/");
         String entityPath = ENTITY_FOLDER + "/" + ids[0];
         final FedoraObject entityObject = objectService.getObject(session, entityPath);
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
@@ -567,14 +567,15 @@ public class ConnectorService {
             final FedoraObject versionObject = objectService.createObject(session, versionPath);
             versionObject.getNode().addMixin("scape:intellectual-entity-version");
 
+            final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
+            final String entityUri = subjects.getSubject(entityObject.getPath()).getURI();
+            final String versionUri = subjects.getSubject(versionObject.getPath()).getURI();
+
             /* add the metadata datastream for descriptive metadata */
             if (ie.getDescriptive() != null) {
                 addMetadata(session, ie.getDescriptive(), versionPath + "/DESCRIPTIVE");
             }
 
-            final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
-            final String entityUri = subjects.getSubject(entityObject.getPath()).getURI();
-            final String versionUri = subjects.getSubject(versionObject.getPath()).getURI();
 
             /* add all the representations */
             for (String repUri : addRepresentations(session, ie.getRepresentations(), versionPath)) {
