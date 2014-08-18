@@ -67,6 +67,6 @@ public final class  ScapeRDFVocabulary {
     }
 
     public static final String namespace(String property) {
-        return SCAPE_NAMESPACE + ":" + property;
+        return SCAPE_NAMESPACE + property;
     }
 }

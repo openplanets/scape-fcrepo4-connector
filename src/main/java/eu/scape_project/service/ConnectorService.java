@@ -24,10 +24,7 @@ import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import javax.jcr.ItemExistsException;
 import javax.jcr.ItemNotFoundException;
@@ -581,7 +578,7 @@ public class ConnectorService {
 
             /* add all the representations */
             for (String repUri : addRepresentations(session, ie.getRepresentations(), versionPath)) {
-                sparql.append("INSERT DATA {<" + versionUri + "> <" + HAS_REPRESENTATION + "> \"" + repUri + "\"};");
+                sparql.append("INSERT DATA {<" + versionUri + "> " + prefix(HAS_REPRESENTATION) + " \"" + repUri + "\"};");
             }
 
             /* update the intellectual entity's properties */
@@ -653,8 +650,6 @@ public class ConnectorService {
             /* save the changes made to the objects */
             session.save();
 
-            SerializationUtils.unifyDatasetModel(entityObject.getPropertiesDataset(subjects)).write(System.out);
-
         } catch (JAXBException e) {
             LOG.error(e.getLocalizedMessage(), e);
             throw new RepositoryException(e);
@@ -682,12 +677,14 @@ public class ConnectorService {
             final Representation rep = (Representation) this.marshaller.deserialize(src);
             final List<Representation> representations = new ArrayList<>();
             final IntellectualEntity orig = this.fetchEntity(session, entityId);
-            for (Representation r : orig.getRepresentations()) {
-                if (!r.getIdentifier().getValue().equals(repId)) {
-                    representations.add(r);
+            if (orig.getRepresentations() != null) {
+                for (Representation r : orig.getRepresentations()) {
+                    if (!r.getIdentifier().getValue().equals(repId)) {
+                        representations.add(r);
+                    }
                 }
+                representations.add(rep);
             }
-            representations.add(rep);
 
             final IntellectualEntity ieUpdate = new IntellectualEntity.Builder(orig).representations(representations).build();
 
@@ -1004,8 +1001,7 @@ public class ConnectorService {
     }
 
     private String getResourceFromModel(Model model, Resource parent, String propertyName) {
-        StmtIterator it = model.listStatements(parent, model.createProperty(propertyName), (RDFNode) null);
-        model.write(System.out);
+        StmtIterator it = model.listStatements(parent, model.createProperty(namespace(propertyName)), (RDFNode) null);
         String uri = it.next().getResource().getURI();
         return uri;
     }
@@ -1192,14 +1188,14 @@ public class ConnectorService {
 
     private String getFirstLiteralString(Model model, Resource subject, String propertyName) {
 
-        final Property p = model.createProperty(propertyName);
+        final Property p = model.createProperty(namespace(propertyName));
         final StmtIterator it = model.listStatements(subject, p, (RDFNode) null);
         return it.next().getLiteral().getString();
     }
 
     private List<String> getLiteralStrings(Model model, Resource subject, String propertyName) {
         final List<String> result = new ArrayList<>();
-        final Property p = model.createProperty(propertyName);
+        final Property p = model.createProperty(namespace(propertyName));
         final StmtIterator it = model.listStatements(subject, p, (RDFNode) null);
         while (it.hasNext()) {
             result.add(it.next().getLiteral().getString());
@@ -1208,6 +1204,9 @@ public class ConnectorService {
     }
 
     private List<String> addRepresentations(final Session session, final List<Representation> representations, final String versionPath) throws RepositoryException {
+        if (representations == null) {
+            return Collections.<String>emptyList();
+        }
         final StringBuilder sparql = new StringBuilder("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         final String versionUri = subjects.getSubject("/" + versionPath).getURI();
