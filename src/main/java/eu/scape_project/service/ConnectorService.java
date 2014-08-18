@@ -1273,7 +1273,9 @@ public class ConnectorService {
     }
 
     private List<String> addFiles(final Session session, final List<File> files, final String repPath) throws RepositoryException {
-
+        if (files == null) {
+            return Collections.<String>emptyList();
+        }
         final List<String> fileUris = new ArrayList<>(files.size());
         final StringBuilder sparql = new StringBuilder("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
         for (File f : files) {
