@@ -7,7 +7,7 @@
     </encoder>
   </appender>
   <logger name="eu.scape_project" level="DEBUG" />
-  <logger name="org.fcrepo" level="DEBUG" />
+  <logger name="org.fcrepo" level="INFO" />
   <root level="INFO">
     <appender-ref ref="STDOUT" />
   </root>

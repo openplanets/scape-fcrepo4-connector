@@ -20,40 +20,53 @@ package eu.scape_project.rdf;
  * @author frank asseg
  * 
  */
-public interface ScapeRDFVocabulary {
+public final class  ScapeRDFVocabulary {
+    private ScapeRDFVocabulary() {
+        super();
+    }
     public static final String SCAPE_NAMESPACE = "http://scapeproject.eu/model#";
 
-    public static final String HAS_REPRESENTATION = "scape:hasRepresentation";
+    public static final String SCAPE_PREFIX = "scape";
 
-    public static final String HAS_TYPE = "scape:hasType";
+    public static final String HAS_REPRESENTATION = "hasRepresentation";
 
-    public static final String HAS_SCHEMA = "scape:hasSchema";
+    public static final String HAS_TYPE = "hasType";
 
-    public static final String HAS_BITSTREAM_TYPE = "scape:hasBitstreamType";
+    public static final String HAS_SCHEMA = "hasSchema";
 
-    public static final String HAS_BITSTREAM = "scape:hasBitStream";
+    public static final String HAS_BITSTREAM_TYPE = "hasBitstreamType";
 
-    public static final String HAS_FILENAME = "scape:hasFileName";
+    public static final String HAS_BITSTREAM = "hasBitStream";
 
-    public static final String HAS_MIMETYPE = "scape:hasMimeType";
+    public static final String HAS_FILENAME = "hasFileName";
 
-    public static final String HAS_INGEST_SOURCE = "scape:hasIngestSource";
+    public static final String HAS_MIMETYPE = "hasMimeType";
 
-    public static final String HAS_TITLE = "scape:hasTitle";
+    public static final String HAS_INGEST_SOURCE = "hasIngestSource";
 
-    public static final String HAS_LIFECYCLESTATE = "scape:hasLifeCycleState";
+    public static final String HAS_TITLE = "hasTitle";
 
-    public static final String HAS_LIFECYCLESTATE_DETAILS = "scape:hasLifeCycleStateDetails";
+    public static final String HAS_LIFECYCLESTATE = "hasLifeCycleState";
 
-    public static final String HAS_CURRENT_VERSION = "scape:currentVersion";
+    public static final String HAS_LIFECYCLESTATE_DETAILS = "hasLifeCycleStateDetails";
 
-    public static final String HAS_VERSION = "scape:hasVersion";
+    public static final String HAS_CURRENT_VERSION = "currentVersion";
 
-    public static final String HAS_FILE = "scape:hasFile";
+    public static final String HAS_VERSION = "hasVersion";
 
-    public static final String HAS_ITEM = "scape:hasItem";
+    public static final String HAS_FILE = "hasFile";
 
-    public static final String HAS_REFERENCED_CONTENT = "scape:hasReferencedContent";
+    public static final String HAS_ITEM = "hasItem";
 
-    public static final String HAS_INGEST_STATE = "scape:hasIngestState";
+    public static final String HAS_REFERENCED_CONTENT = "hasReferencedContent";
+
+    public static final String HAS_INGEST_STATE = "hasIngestState";
+
+    public static final String prefix(String property) {
+        return SCAPE_PREFIX + ":" + property;
+    }
+
+    public static final String namespace(String property) {
+        return SCAPE_NAMESPACE + ":" + property;
+    }
 }

@@ -95,8 +95,9 @@ public class ScapeInitializer implements AbstractResourceModelListener {
             entityType.setAbstract(false);
             entityType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasRepresentation"));
             entityType.getPropertyDefinitionTemplates().add(createMultiPropertyDefTemplate(session, mgr, "scape:hasVersion"));
-            entityType.getPropertyDefinitionTemplates().add(createSinglePropertyDefTemplate(session, mgr, "scape:hasType"));
-            entityType.getPropertyDefinitionTemplates().add(createSinglePropertyDefTemplate(session, mgr, "scape:hasSchema"));
+            entityType.getPropertyDefinitionTemplates().add(createSinglePropertyDefTemplate(session, mgr, "scape:currentVersion", PropertyType.URI));
+            entityType.getPropertyDefinitionTemplates().add(createSinglePropertyDefTemplate(session, mgr, "scape:hasType", PropertyType.STRING));
+            entityType.getPropertyDefinitionTemplates().add(createSinglePropertyDefTemplate(session, mgr, "scape:hasSchema", PropertyType.STRING));
 
             final NodeTypeTemplate versionType = mgr.createNodeTypeTemplate();
             versionType.setName("scape:intellectual-entity-version");
@@ -157,10 +158,10 @@ public class ScapeInitializer implements AbstractResourceModelListener {
 
     }
 
-    private PropertyDefinitionTemplate createSinglePropertyDefTemplate(Session session, NodeTypeManager mgr, String name) throws RepositoryException {
+    private PropertyDefinitionTemplate createSinglePropertyDefTemplate(Session session, NodeTypeManager mgr, String name, int propertyType) throws RepositoryException {
         PropertyDefinitionTemplate propDefn = mgr.createPropertyDefinitionTemplate();
         propDefn.setName(name);
-        propDefn.setRequiredType(PropertyType.STRING);
+        propDefn.setRequiredType(propertyType);
         ValueFactory valueFactory = session.getValueFactory();
         propDefn.setMultiple(false);
         propDefn.setFullTextSearchable(false);

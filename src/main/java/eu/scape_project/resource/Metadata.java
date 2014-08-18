@@ -72,7 +72,7 @@ public class Metadata {
      */
     public Response retrieveMetadata(@PathParam("path")
     String path) throws RepositoryException {
-        path = "/" + ConnectorService.ENTITY_FOLDER + "/" + path;
+        path = ConnectorService.ENTITY_FOLDER + "/" + path;
         final Object md = connectorService.fetchCurrentMetadata(this.session, path);
         return Response.ok().entity(new StreamingOutput() {
 

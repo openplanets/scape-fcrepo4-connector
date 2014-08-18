@@ -129,10 +129,10 @@ public class Bitstreams {
 
         final String path;
         if (versionId == null) {
-            path = "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId + "/" + repId + "/" + fileId + "/" + bsId;
+            path = ConnectorService.ENTITY_FOLDER + "/" + entityId + "/" + repId + "/" + fileId + "/" + bsId;
 
         } else {
-            path = "/" + ConnectorService.ENTITY_FOLDER + "/" + entityId + "/version-" + versionId + "/" + repId + "/" + fileId + "/" + bsId;
+            path = ConnectorService.ENTITY_FOLDER + "/" + entityId + "/version-" + versionId + "/" + repId + "/" + fileId + "/" + bsId;
 
         }
         final BitStream bs = connectorService.fetchBitStream(session, path);

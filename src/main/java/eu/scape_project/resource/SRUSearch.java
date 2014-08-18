@@ -154,7 +154,7 @@ public class SRUSearch {
                 for (String uri : uris) {
                     try {
                         final Representation rep = SRUSearch.this.connectorService.fetchRepresentation(session,
-                                uri.substring(uri.indexOf("/" + ConnectorService.ENTITY_FOLDER)));
+                                uri.substring(uri.indexOf(ConnectorService.ENTITY_FOLDER)));
                         writeSRURecord(rep, output);
                     } catch (RepositoryException e) {
                         throw new IOException(e);
@@ -205,7 +205,7 @@ public class SRUSearch {
                 writeSRUHeader(output, uris.size());
                 for (String uri : uris) {
                     try {
-                        final File f = SRUSearch.this.connectorService.fetchFile(session, uri.substring(uri.indexOf("/" + ConnectorService.ENTITY_FOLDER)));
+                        final File f = SRUSearch.this.connectorService.fetchFile(session, uri.substring(uri.indexOf(ConnectorService.ENTITY_FOLDER)));
                         writeSRURecord(f, output);
                     } catch (RepositoryException e) {
                         throw new IOException(e);

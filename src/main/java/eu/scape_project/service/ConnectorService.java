@@ -99,7 +99,7 @@ import static eu.scape_project.rdf.ScapeRDFVocabulary.*;
 @Component
 public class ConnectorService {
 
-    public final static String ENTITY_FOLDER = "objects/scape/entities";
+    public final static String ENTITY_FOLDER = "/objects/scape/entities";
 
     public final static String QUEUE_NODE = "/objects/scape/queue";
 
@@ -219,7 +219,7 @@ public class ConnectorService {
         final IntellectualEntity.Builder ie = new IntellectualEntity.Builder();
         ie.identifier(new Identifier(id));
 
-        final String entityPath = "/" + ENTITY_FOLDER + "/" + id;
+        final String entityPath = ENTITY_FOLDER + "/" + id;
         final FedoraObject ieObject = this.objectService.getObject(session, entityPath);
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         final String entityUri = subjects.getSubject(entityPath).getURI();
@@ -295,14 +295,14 @@ public class ConnectorService {
 
         final String entityPath, dsPath;
         if (versionId == null) {
-            entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
+            entityPath = ENTITY_FOLDER + "/" + entityId;
             final FedoraObject fo = this.objectService.getObject(session, entityPath);
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
             final String uri = subjects.getSubject(entityPath).getURI();
             final Model entityModel = SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset(subjects));
             dsPath = this.getCurrentVersionPath(entityModel, uri) + "/" + repId + "/" + fileId + "/DATA";
         } else {
-            entityPath = "/" + ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
+            entityPath = ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
             dsPath = entityPath + "/" + repId + "/" + fileId + "/DATA";
         }
 
@@ -366,7 +366,7 @@ public class ConnectorService {
     public Object fetchCurrentMetadata(final Session session, final String path) throws RepositoryException {
 
         String[] ids = path.substring(ENTITY_FOLDER.length() + 2).split("/");
-        String entityPath = "/" + ENTITY_FOLDER + "/" + ids[0];
+        String entityPath = ENTITY_FOLDER + "/" + ids[0];
         final FedoraObject entityObject = objectService.getObject(session, entityPath);
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         final String uri = subjects.getSubject(entityPath).getURI();
@@ -474,13 +474,13 @@ public class ConnectorService {
         String entityPath, repPath;
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         if (versionId == null) {
-            entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
+            entityPath = ENTITY_FOLDER + "/" + entityId;
             final FedoraObject fo = this.objectService.getObject(session, entityPath);
             final String uri = subjects.getSubject(fo.getPath()).getURI();
             final Model entityModel = SerializationUtils.unifyDatasetModel(fo.getPropertiesDataset(subjects));
             repPath = this.getCurrentVersionPath(entityModel, uri) + "/" + repId;
         } else {
-            entityPath = "/" + ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
+            entityPath = ENTITY_FOLDER + "/" + entityId + "/version-" + versionId;
             repPath = entityPath + "/" + repId;
         }
 
@@ -499,7 +499,7 @@ public class ConnectorService {
      *             if an error occurred while creating the {@link VersionList}
      */
     public VersionList fetchVersionList(final Session session, final String entityId) throws RepositoryException {
-        final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
+        final String entityPath = ENTITY_FOLDER + "/" + entityId;
         final FedoraObject entityObject = this.objectService.getObject(session, entityPath);
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         final String uri = subjects.getSubject(entityObject.getPath()).getURI();
@@ -545,7 +545,7 @@ public class ConnectorService {
         try {
             /* read the post body into an IntellectualEntity object */
             final IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, src);
-            final StringBuilder sparql = new StringBuilder();
+            final StringBuilder sparql = new StringBuilder("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
 
             if (entityId == null) {
                 if (ie.getIdentifier() != null) {
@@ -585,11 +585,11 @@ public class ConnectorService {
             }
 
             /* update the intellectual entity's properties */
-            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_LIFECYCLESTATE + "> \"" + LifecycleState.State.INGESTED + "\"};");
-            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_LIFECYCLESTATE_DETAILS + "> \"successfully ingested at " + new Date().getTime() + "\"};");
-            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_TYPE + "> \"intellectualentity\"};");
-            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_VERSION + "> \"" + versionUri + "\"};");
-            sparql.append("INSERT DATA {<" + entityUri + "> <" + HAS_CURRENT_VERSION + ">  <" + versionUri + "> };");
+            sparql.append("INSERT DATA {<" + entityUri + "> " + prefix(HAS_LIFECYCLESTATE) + " \"" + LifecycleState.State.INGESTED + "\"};");
+            sparql.append("INSERT DATA {<" + entityUri + "> " + prefix(HAS_LIFECYCLESTATE_DETAILS) + " \"successfully ingested at " + new Date().getTime() + "\"};");
+            sparql.append("INSERT DATA {<" + entityUri + "> " + prefix(HAS_TYPE) + " \"intellectualentity\"};");
+            sparql.append("INSERT DATA {<" + entityUri + "> " + prefix(HAS_VERSION) + " \"" + versionUri + "\"};");
+            sparql.append("INSERT DATA {<" + entityUri + "> " + prefix(HAS_CURRENT_VERSION) + "  <" + versionUri + "> };");
 
             /* update the object and it's child's using sparql */
             entityObject.updatePropertiesDataset(subjects, sparql.toString());
@@ -618,7 +618,7 @@ public class ConnectorService {
      *             {@link IntellectualEntity}
      */
     public void updateEntity(final Session session, final InputStream src, final String entityId) throws RepositoryException {
-        final String entityPath = "/" + ENTITY_FOLDER + "/" + entityId;
+        final String entityPath = ENTITY_FOLDER + "/" + entityId;
         final FedoraObject entityObject = this.objectService.getObject(session, entityPath);
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         final String uri = subjects.getSubject(entityObject.getPath()).getURI();
@@ -632,7 +632,7 @@ public class ConnectorService {
         try {
             /* read the post body into an IntellectualEntity object */
             final IntellectualEntity ie = this.marshaller.deserialize(IntellectualEntity.class, src);
-            final StringBuilder sparql = new StringBuilder();
+            final StringBuilder sparql = new StringBuilder("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
 
             final FedoraObject versionObject = objectService.createObject(session, newVersionPath);
 
@@ -644,16 +644,16 @@ public class ConnectorService {
             /* add all the representations */
             addRepresentations(session, ie.getRepresentations(), newVersionPath);
 
-            sparql.append("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
-            sparql.append("DELETE {<" + uri + "> " + HAS_CURRENT_VERSION + " <" + oldVersionUri + ">} WHERE {};");
-            sparql.append("INSERT DATA {<" + uri + "> " + HAS_VERSION + " <" + newVersionUri + ">};");
-            sparql.append("INSERT DATA {<" + uri + "> " + HAS_CURRENT_VERSION + "  <" + newVersionUri + ">};");
+            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_VERSION) + " <" + newVersionUri + ">};");
+            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_CURRENT_VERSION) + "  <" + newVersionUri + ">};");
 
             /* update the object and it's child's using sparql */
             entityObject.updatePropertiesDataset(subjects, sparql.toString());
 
             /* save the changes made to the objects */
             session.save();
+
+            SerializationUtils.unifyDatasetModel(entityObject.getPropertiesDataset(subjects)).write(System.out);
 
         } catch (JAXBException e) {
             LOG.error(e.getLocalizedMessage(), e);
@@ -765,7 +765,7 @@ public class ConnectorService {
             ByteArrayOutputStream sink = new ByteArrayOutputStream();
             this.marshaller.serialize(ie, sink);
             final FedoraObject queue = this.objectService.getObject(session, QUEUE_NODE);
-            if (this.objectService.exists(session, "/" + ENTITY_FOLDER + "/" + id)) {
+            if (this.objectService.exists(session,ENTITY_FOLDER + "/" + id)) {
                 throw new RepositoryException("Unable to queue item with id " + id
                         + " for ingest since an intellectual entity with that id already esists in the repository");
             }
@@ -777,8 +777,10 @@ public class ConnectorService {
             /* update the ingest queue */
             final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
             final String uri = subjects.getSubject(QUEUE_NODE).getURI();
-            final String sparql = "INSERT DATA {<" + uri + "> <" + HAS_ITEM + "> \"" + item.getPath() + "\"};";
-            queue.updatePropertiesDataset(subjects, sparql);
+            final StringBuilder sparql = new StringBuilder("PREFIX scape: <http://scapeproject.eu/model#> ");
+            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_ITEM) + " \"" + item.getPath() + "\"};");
+            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_INGEST_STATE) + " \"QUEUED\"");
+            queue.updatePropertiesDataset(subjects, sparql.toString());
             session.save();
             return id;
         } catch (InvalidChecksumException | JAXBException e) {
@@ -824,9 +826,9 @@ public class ConnectorService {
         }
 
         /* check if the entity exists */
-        if (this.objectService.exists(session, "/" + ENTITY_FOLDER + "/" + entityId)) {
+        if (this.objectService.exists(session, ENTITY_FOLDER + "/" + entityId)) {
             /* fetch the state form the entity itself */
-            final FedoraObject entityObject = this.objectService.getObject(session, "/" + ENTITY_FOLDER + "/" + entityId);
+            final FedoraObject entityObject = this.objectService.getObject(session, ENTITY_FOLDER + "/" + entityId);
             final String entityUri = subjects.getSubject(entityObject.getPath()).getURI();
             final Model entityModel = SerializationUtils.unifyDatasetModel(entityObject.getPropertiesDataset(subjects));
             final Resource subject = entityModel.createResource(entityUri);
@@ -849,6 +851,7 @@ public class ConnectorService {
     @Scheduled(fixedDelay = 1000, initialDelay = 5000)
     public void ingestFromQueue() throws RepositoryException {
         Session session = sessionFactory.getInternalSession();
+        final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         if (!this.objectService.exists(session, QUEUE_NODE)) {
             return;
         }
@@ -856,11 +859,17 @@ public class ConnectorService {
             final Datastream ds = this.datastreamService.getDatastream(session, item);
             /* update the ingest state so that it won't get ingested twice */
             try {
-                ds.getNode().setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE, "INGESTING");
+                final StringBuilder sparql = new StringBuilder("PREFIX scape: <http://scapeproject.eu/model#> ");
+                final String uri = subjects.getSubject(ds.getPath()).getURI();
+                sparql.append("INSERT DATA {<" + uri + "> " + HAS_INGEST_STATE + " \"INGESTING\"};");
+                ds.updatePropertiesDataset(subjects, sparql.toString());
                 addEntity(session, ds.getContent(), item.substring(QUEUE_NODE.length() + 1));
                 deleteFromQueue(session, item);
             } catch (Exception e) {
-                ds.getNode().setProperty(ScapeRDFVocabulary.HAS_INGEST_STATE, "INGEST_FAILED");
+                final StringBuilder sparql = new StringBuilder("PREFIX scape: <http://scapeproject.eu/model#> ");
+                final String uri = subjects.getSubject(ds.getPath()).getURI();
+                sparql.append("INSERT DATA {<" + uri + "> " + HAS_INGEST_STATE + " \"INGEST_FAILED\"};");
+                ds.updatePropertiesDataset(subjects, sparql.toString());
             }
         }
         session.save();
@@ -996,6 +1005,7 @@ public class ConnectorService {
 
     private String getResourceFromModel(Model model, Resource parent, String propertyName) {
         StmtIterator it = model.listStatements(parent, model.createProperty(propertyName), (RDFNode) null);
+        model.write(System.out);
         String uri = it.next().getResource().getURI();
         return uri;
     }
@@ -1005,7 +1015,7 @@ public class ConnectorService {
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         final String uri = subjects.getSubject(queueObject.getPath()).getURI();
 
-        final String sparql = "DELETE {<" + uri + "> <" + HAS_ITEM + "> \"" + item + "\"} WHERE {}";
+        final String sparql = "DELETE {<" + uri + "> " + prefix(HAS_ITEM) + " \"" + item + "\"} WHERE {}";
         queueObject.updatePropertiesDataset(subjects, sparql);
         this.nodeService.deleteObject(session, item);
         session.save();
@@ -1198,7 +1208,7 @@ public class ConnectorService {
     }
 
     private List<String> addRepresentations(final Session session, final List<Representation> representations, final String versionPath) throws RepositoryException {
-        final StringBuilder sparql = new StringBuilder();
+        final StringBuilder sparql = new StringBuilder("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         final String versionUri = subjects.getSubject("/" + versionPath).getURI();
         final List<String> repUris = new ArrayList<>(representations.size());
@@ -1227,12 +1237,12 @@ public class ConnectorService {
 
             /* add all the files */
             for (final String fileUri : addFiles(session, rep.getFiles(), repPath)) {
-                sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_FILE + "> \"" + fileUri + "\"};");
+                sparql.append("INSERT DATA {<" + repUri + "> " + prefix(HAS_FILE) + " \"" + fileUri + "\"};");
             }
 
             /* add a sparql query to set the type of this object */
-            sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_TYPE + "> \"representation\"};");
-            sparql.append("INSERT DATA {<" + repUri + "> <" + HAS_TITLE + "> \"" + rep.getTitle() + "\"};");
+            sparql.append("INSERT DATA {<" + repUri + "> " + prefix(HAS_TYPE) + " \"representation\"};");
+            sparql.append("INSERT DATA {<" + repUri + "> " + prefix(HAS_TITLE) + " \"" + rep.getTitle() + "\"};");
             repObject.updatePropertiesDataset(subjects, sparql.toString());
         }
         return repUris;
@@ -1241,7 +1251,7 @@ public class ConnectorService {
 
     private List<String> addBitStreams(final Session session, final List<BitStream> bitStreams, final String filePath) throws RepositoryException {
 
-        final StringBuilder sparql = new StringBuilder();
+        final StringBuilder sparql = new StringBuilder("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
         final IdentifierTranslator subjects = new DefaultIdentifierTranslator();
         final List<String> bsUris = new ArrayList<>(bitStreams.size());
 
@@ -1257,8 +1267,8 @@ public class ConnectorService {
             }
             final String bsType = (bs.getType() != null) ? bs.getType().name() : BitStream.Type.STREAM.name();
 
-            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_TYPE + "> \"bitstream\"};");
-            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_BITSTREAM_TYPE + "> \"" + bsType + "\"};");
+            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_TYPE) + " \"bitstream\"};");
+            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_BITSTREAM_TYPE) + " \"" + bsType + "\"};");
             bsObject.updatePropertiesDataset(subjects, sparql.toString());
             bsUris.add(uri);
         }
@@ -1269,7 +1279,7 @@ public class ConnectorService {
     private List<String> addFiles(final Session session, final List<File> files, final String repPath) throws RepositoryException {
 
         final List<String> fileUris = new ArrayList<>(files.size());
-        final StringBuilder sparql = new StringBuilder();
+        final StringBuilder sparql = new StringBuilder("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
         for (File f : files) {
 
             final String fileId = (f.getIdentifier() != null) ? f.getIdentifier().getValue() : UUID.randomUUID().toString();
@@ -1295,7 +1305,7 @@ public class ConnectorService {
             /* add all bitstreams as child objects */
             if (f.getBitStreams() != null) {
                 for (final String bsUri : addBitStreams(session, f.getBitStreams(), "/" + filePath)) {
-                    sparql.append("INSERT DATA {<" + uri + "> <" + HAS_BITSTREAM + "> \"" + bsUri + "\"};");
+                    sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_BITSTREAM) + " \"" + bsUri + "\"};");
                 }
             }
             String fileName = f.getFilename();
@@ -1304,18 +1314,18 @@ public class ConnectorService {
             }
             final String mimeType = (f.getMimetype() != null) ? f.getMimetype() : "application/binary";
 
-            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_TYPE + "> \"file\"};");
-            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_FILENAME + "> \"" + fileName + "\"};");
-            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_MIMETYPE + "> \"" + mimeType + "\"};");
-            sparql.append("INSERT DATA {<" + uri + "> <" + HAS_INGEST_SOURCE + "> \"" + f.getUri() + "\"};");
+            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_TYPE) + " \"file\"};");
+            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_FILENAME) + " \"" + fileName + "\"};");
+            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_MIMETYPE) + " \"" + mimeType + "\"};");
+            sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_INGEST_SOURCE) + " \"" + f.getUri() + "\"};");
 
 
             if (this.referencedContent) {
                 /* only write a reference to the file URI as a node property */
-                sparql.append("INSERT DATA {<" + uri + "> <" + HAS_REFERENCED_CONTENT + "> \"" + fileUri + "\"};");
+                sparql.append("INSERT DATA {<" + uri + "> " + prefix(HAS_REFERENCED_CONTENT) + " \"" + fileUri + "\"};");
             } else {
                 /* load the actual binary data into the repo */
-                LOG.info("reding binary from {}", fileUri.toASCIIString());
+                LOG.info("reading binary from {}", fileUri.toASCIIString());
                 try (final InputStream src = fileUri.toURL().openStream()) {
                     final Node fileDs = this.datastreamService.createDatastream(session, filePath + "/DATA", f.getMimetype(), null, src).getContentNode();
                 } catch (IOException | InvalidChecksumException e) {
@@ -1329,7 +1339,7 @@ public class ConnectorService {
     }
 
     private void addMetadata(final Session session, final Object metadata, final String path) throws RepositoryException {
-        final StringBuilder sparql = new StringBuilder();
+        final StringBuilder sparql = new StringBuilder("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
         try {
 
             /* use piped streams to copy the data to the repo */
@@ -1395,9 +1405,8 @@ public class ConnectorService {
             }
 
             /* add a sparql query to set the type of this object */
-            sparql.append("PREFIX scape: <" + SCAPE_NAMESPACE + "> ");
-            sparql.append("INSERT DATA {<" + dsUri + "> " + HAS_TYPE + " '" + type + "'};");
-            sparql.append("INSERT DATA {<" + dsUri + "> " + HAS_SCHEMA + " '" + schema + "'};");
+            sparql.append("INSERT DATA {<" + dsUri + "> " + prefix(HAS_TYPE) + " '" + type + "'};");
+            sparql.append("INSERT DATA {<" + dsUri + "> " + prefix(HAS_SCHEMA) + " '" + schema + "'};");
 
             ds.updatePropertiesDataset(subjects, sparql.toString());
 
