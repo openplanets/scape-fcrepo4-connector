@@ -14,12 +14,8 @@
     base-package="eu.scape_project.web.listener, eu.scape_project.resource" />
     
   <bean class="eu.scape_project.service.ConnectorService">
-    <property name="fedoraUrl" value="${scape.fcrepo.url:http://localhost:8080/rest}" />
+    <property name="fedoraUrl" value="${scape.fcrepo.url:http://localhost:8080/fcrepo/rest}" />
     <property name="referencedContent" value="${scape.fcrepo.content.referenced:false}" />
   </bean>
-
-  <task:scheduler id="taskScheduler" />
-  <task:executor id="taskExecutor" pool-size="1" />
-  <task:annotation-driven executor="taskExecutor" scheduler="taskScheduler" />
 
 </beans>

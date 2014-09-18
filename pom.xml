@@ -14,7 +14,7 @@
 	<properties>
 		<fcrepo.version>4.0.0-beta-02</fcrepo.version>
 		<spring.version>4.0.3.RELEASE</spring.version>
-		<scape-platform-datamodel.version>0.1.8-SNAPSHOT</scape-platform-datamodel.version>
+		<scape-platform-datamodel.version>0.1.9-SNAPSHOT</scape-platform-datamodel.version>
 	</properties>
 
 	<!-- for fcrepo4 and scape-platform-datamodel snapshot builds when building

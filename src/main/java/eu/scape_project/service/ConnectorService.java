@@ -1033,7 +1033,8 @@ public class ConnectorService {
         while (it.hasNext()) {
             final String itemUri = it.nextStatement().getObject().asLiteral().getString();
             final String path = subjects.getPathFromSubject(queueModel.createResource(itemUri));
-            if (this.datastreamService.getDatastreamNode(session, path)
+            if (this.datastreamService.getDatastream(session, path)
+                    .getNode()
                     .getProperties(prefix(HAS_INGEST_STATE))
                     .nextProperty()
                     .getString()
